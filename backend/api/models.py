@@ -38,6 +38,7 @@ class Track(models.Model):
         "voiceover": "Voiceover / Main Script",
         "broll": "B-Roll & Visual Notes",
         "resources": "Resources & Links",
+        "images": "Images",
     }
 
     TRACK_COLOR_PALETTE = [

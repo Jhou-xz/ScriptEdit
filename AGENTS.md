@@ -51,7 +51,7 @@ apple/DESIGN.md       Apple design-system reference (grammar only; UI is dark Pr
 
 - **Project** `name, default_wpm (150)`
 - **Script** `project FK, title, status, target_length_min, wpm_override` → `effective_wpm`
-- **Track** `script FK, kind (free string), name, order, color (auto palette), is_script_track`. Fully user-managed (add/rename/delete/reorder via order). `KIND_DEFAULT_NAMES` seeds new scripts with 3 tracks: voiceover (script track), broll, resources. **No "Tags & SEO" track** (removed deliberately).
+- **Track** `script FK, kind (free string), name, order, color (auto palette), is_script_track`. Fully user-managed (add/rename/delete/reorder via order). `KIND_DEFAULT_NAMES` seeds new scripts with 4 tracks: voiceover (script track), broll, resources, images. **No "Tags & SEO" track** (removed deliberately). Images track holds image blocks (`content` = TipTap doc with an `image` node; anchored to their VO block) — pictures never live inline in VO prose.
 - **Block** `track FK, title, start_seconds, duration_seconds, content (TipTap JSON), content_markdown, word_count, wpm_override, anchor_block (self FK, must be on script track), anchor_offset_seconds, clip_kind (''|muted|clip|full), source_url, source_in_seconds, source_out_seconds, editor_note, color_tag, version`
   - `is_script_track` track ⇒ `duration_seconds = word_count / wpm * 60`, capped at 600s, recomputed server-side on every content save. Other tracks: manual duration.
   - Moving a script-track block shifts its anchored children by the same delta (server-side).
@@ -68,7 +68,7 @@ apple/DESIGN.md       Apple design-system reference (grammar only; UI is dark Pr
   - `PATCH /api/blocks/{id}/move/` `{start_seconds, track_id?}` · `PATCH .../resize/` `{duration_seconds}`
   - `POST/DELETE /api/blocks/{id}/anchor/`
   - `POST/DELETE /api/blocks/{id}/tags/{tag_id}/`, `.../resources/{resource_id}/`
-  - `GET /api/scripts/{id}/export/?fmt=text|json` — NOTE: param is `fmt`, not `format` (`?format=` collides with DRF content negotiation and 404s on `text`).
+  - `GET /api/scripts/{id}/export/?fmt=docx|text|json` — NOTE: param is `fmt`, not `format` (`?format=` collides with DRF content negotiation and 404s on `text`). `docx` (default in UI) mirrors the faceless-doc format via `services/docx_export.py` (headings, prose, clip parens, quotes, bare URLs, embedded images).
   - `POST /api/scripts/import/` (multipart `file`=.docx) — creates a new script from a faceless-doc script.
   - `POST /api/scripts/{id}/auto_layout/` — LLM layout suggestions; 501 until an API key is set.
   - `POST /api/media/` (multipart image) → `{url}` for editor images.
@@ -101,7 +101,9 @@ Dark Premiere-Pro surfaces + Apple grammar. Tokens in `frontend/src/theme/tokens
 
 ## Import format (services/docx_import.py)
 
-Deterministic parser for the user's script format: headings → chapter-titled VO blocks; prose → VO paragraphs (flush ~every 6); `(Muted Background Clip @ 0:54 - 0:57 URL)` / `(Clip @ …)` / `(Full Clip URL)` → broll blocks with structured clip fields; `"quote"` + URL → blockquote + link; bare URLs → resource blocks; note-only parens → `editor_note`; embedded images → media/. Clips cascade sequentially per VO block (`clip_cursor`) — **never stack clips at identical timestamps** (invisible overlaps confused users).
+Deterministic parser for the user's script format: headings → chapter-titled VO blocks; prose → VO paragraphs (flush ~every 6); `(Muted Background Clip @ 0:54 - 0:57 URL)` / `(Clip @ …)` / `(Full Clip URL)` → broll blocks with structured clip fields; `"quote"` + URL → blockquote + link; bare URLs → resource blocks; note-only parens → `editor_note`; embedded images → **images-track blocks** (anchored, cascaded). Clips cascade sequentially per VO block (`clip_cursor`) — **never stack clips at identical timestamps** (invisible overlaps confused users).
+
+Frontend image flow: paste/"Img" button in the editor uploads via `/api/media/` then calls `createImageBlock(voBlockId, url)` (images-track block, anchored) — never inserts inline `<img>`. Vite proxies `/media` to Django or images 404 in dev.
 
 ## Common tasks
 

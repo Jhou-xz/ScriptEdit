@@ -435,6 +435,36 @@
   color: #e06c6c;
 }
 
+.track-height-grip {
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  right: 0;
+  height: 6px;
+  cursor: row-resize;
+  z-index: 15;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.track-label:hover .track-height-grip {
+  opacity: 1;
+}
+
+.track-height-grip:hover {
+  background: var(--color-accent);
+}
+
+.track-height-grip::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 1px;
+  right: 0;
+  height: 1px;
+  background: var(--divider-hairline);
+}
+
 .track-add-row {
   padding: var(--space-xs);
 }
@@ -769,11 +799,12 @@
 
 .doc-rail {
   min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
-  padding-top: var(--space-lg);
-  align-content: start;
+  padding-top: 0;
+  align-content: flex-start;
+  align-items: stretch;
 }
 
 .doc-section {
@@ -905,6 +936,31 @@
   color: var(--text-secondary);
 }
 
+.doc-note-input {
+  display: block;
+  width: 100%;
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--surface-raised);
+  border: 1px solid transparent;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  font-family: var(--font-text);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-secondary);
+  outline: none;
+}
+
+.doc-note-input::placeholder {
+  color: var(--text-muted);
+}
+
+.doc-note-input:focus {
+  border-color: var(--color-accent);
+  border-left-width: 3px;
+}
+
 /* ---------- Clip / link cards ---------- */
 .doc-card {
   background: var(--surface-panel);
@@ -913,6 +969,32 @@
   border-radius: var(--radius-sm);
   padding: var(--space-md);
   transition: outline-color 0.2s ease, background 0.2s ease;
+  flex: 1 1 300px;
+  min-width: 240px;
+  max-width: 420px;
+  position: relative;
+}
+
+.card-resize-grip {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  border-radius: 0 0 var(--radius-xs) 0;
+  background: linear-gradient(135deg, transparent 50%, var(--divider-hairline) 50%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  touch-action: none;
+}
+
+.doc-card:hover .card-resize-grip {
+  opacity: 1;
+}
+
+.card-resize-grip:hover {
+  background: linear-gradient(135deg, transparent 50%, var(--color-accent) 50%);
 }
 
 .doc-card.doc-section-active {
@@ -1044,6 +1126,20 @@
   color: var(--color-accent);
   font-size: 13px;
   flex: none;
+}
+
+.card-image-wrap {
+  margin: var(--space-xs) 0 var(--space-sm);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--divider-hairline);
+}
+
+.card-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
 }
 
 /* ---------- YouTube embeds ---------- */

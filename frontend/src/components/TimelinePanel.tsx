@@ -67,20 +67,49 @@ function TrackLabel({
   height,
   onPointerDown,
   dragOffset,
+  onLiveHeight,
 }: {
   track: Track;
   height: number;
   onPointerDown?: (e: React.PointerEvent, track: Track) => void;
   dragOffset?: number | null;
+  onLiveHeight?: (trackId: number, height: number | null) => void;
 }) {
-  const { renameTrack, deleteTrack, toggleScriptTrack, createBlock, blocks } = useStore();
+  const { renameTrack, deleteTrack, toggleScriptTrack, createBlock, blocks, setTrackHeight } =
+    useStore();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(track.name);
+  const heightDragRef = useRef<{ startY: number; startH: number; last: number } | null>(null);
 
   const commitRename = () => {
     setEditing(false);
     if (name.trim() && name.trim() !== track.name) renameTrack(track.id, name.trim());
     else setName(track.name);
+  };
+
+  const onHeightGripDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    heightDragRef.current = { startY: e.clientY, startH: height, last: height };
+    const onMove = (ev: PointerEvent) => {
+      const g = heightDragRef.current;
+      if (!g) return;
+      const h = Math.min(320, Math.max(48, Math.round(g.startH + (ev.clientY - g.startY))));
+      g.last = h;
+      onLiveHeight?.(track.id, h);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      const g = heightDragRef.current;
+      heightDragRef.current = null;
+      if (g) {
+        onLiveHeight?.(track.id, null);
+        setTrackHeight(track.id, g.last);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   };
 
   return (
@@ -155,6 +184,15 @@ function TrackLabel({
           ×
         </button>
       </div>
+      <span
+        className="track-height-grip"
+        title="Drag to resize lane height · double-click to reset"
+        onPointerDown={onHeightGripDown}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setTrackHeight(track.id, null);
+        }}
+      />
     </div>
   );
 }
@@ -174,9 +212,15 @@ export function TimelinePanel() {
     createTrack,
     deleteBlock,
     reorderTracks,
+    trackHeights,
     presence,
     agentFlash,
   } = useStore();
+
+  const [liveHeights, setLiveHeights] = useState<Record<number, number | null>>({});
+  const onLiveHeight = useCallback((trackId: number, height: number | null) => {
+    setLiveHeights((prev) => ({ ...prev, [trackId]: height }));
+  }, []);
 
   const [drag, setDrag] = useState<DragState | null>(null);
   const [trackDrag, setTrackDrag] = useState<{
@@ -229,12 +273,13 @@ export function TimelinePanel() {
     for (const t of orderedTracks) {
       const layout = rowLayout.get(t.id);
       const rows = layout && layout.size > 0 ? [...layout.values()][0].rows : 1;
-      const h = laneHeight(rows);
+      const custom = liveHeights[t.id] ?? trackHeights[t.id];
+      const h = Math.max(laneHeight(rows), custom ?? 0);
       tops.set(t.id, { top: acc, height: h });
       acc += h;
     }
     return { tops, total: acc };
-  }, [orderedTracks, rowLayout]);
+  }, [orderedTracks, rowLayout, liveHeights, trackHeights]);
 
   const trackAtY = useCallback(
     (y: number): Track | null => {
@@ -470,6 +515,7 @@ export function TimelinePanel() {
               height={laneTops.tops.get(t.id)?.height ?? laneHeight(1)}
               onPointerDown={onLabelPointerDown}
               dragOffset={trackDrag?.id === t.id ? trackDrag.deltaY : null}
+              onLiveHeight={onLiveHeight}
             />
           ))}
           {dropIndicatorY !== null && (

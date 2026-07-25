@@ -32,6 +32,7 @@ interface StoreState {
   hoverBlockId: number | null;
   revealSignal: { blockId: number; ts: number } | null;
   pxPerSecond: number;
+  trackHeights: Record<number, number>;
   sidebarOpen: boolean;
   presence: Record<number, PresenceInfo>;
   agentFlash: Record<number, number>;
@@ -48,6 +49,7 @@ interface StoreState {
   setHoverBlock: (id: number | null) => void;
   revealInTimeline: (blockId: number) => void;
   setPxPerSecond: (v: number) => void;
+  setTrackHeight: (trackId: number, height: number | null) => void;
   toggleSidebar: () => void;
 
   updateBlockContent: (id: number, content: Record<string, unknown>) => Promise<void>;
@@ -63,6 +65,7 @@ interface StoreState {
   deleteTrack: (id: number) => Promise<void>;
   reorderTracks: (orderedIds: number[]) => Promise<void>;
   importScript: (file: File) => Promise<void>;
+  createImageBlock: (voBlockId: number, imageUrl: string) => Promise<void>;
 
   attachTag: (blockId: number, tagId: number) => Promise<void>;
   detachTag: (blockId: number, tagId: number) => Promise<void>;
@@ -93,6 +96,13 @@ export const useStore = create<StoreState>((set, get) => ({
   hoverBlockId: null,
   revealSignal: null,
   pxPerSecond: 6,
+  trackHeights: (() => {
+    try {
+      return JSON.parse(localStorage.getItem("scriptedit_track_heights") ?? "{}");
+    } catch {
+      return {};
+    }
+  })(),
   sidebarOpen: true,
   presence: {},
   agentFlash: {},
@@ -200,6 +210,14 @@ export const useStore = create<StoreState>((set, get) => ({
   revealInTimeline: (blockId) => set({ revealSignal: { blockId, ts: Date.now() } }),
 
   setPxPerSecond: (v) => set({ pxPerSecond: Math.min(20, Math.max(1, v)) }),
+
+  setTrackHeight: (trackId, height) => {
+    const heights = { ...get().trackHeights };
+    if (height === null) delete heights[trackId];
+    else heights[trackId] = height;
+    localStorage.setItem("scriptedit_track_heights", JSON.stringify(heights));
+    set({ trackHeights: heights });
+  },
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
 
   pushUndo: (entry) => set({ undoStack: [...get().undoStack.slice(-49), entry] }),
@@ -377,6 +395,33 @@ export const useStore = create<StoreState>((set, get) => ({
     const { script } = await api.importDocx(file);
     set({ scripts: [...get().scripts, script] });
     await get().loadScript(script.id);
+  },
+
+  createImageBlock: async (voBlockId, imageUrl) => {
+    const { tracks, blocks } = get();
+    const vo = blocks[voBlockId];
+    const imagesTrack = tracks.find((t) => t.kind === "images");
+    if (!vo || !imagesTrack) return;
+    const siblings = Object.values(blocks).filter(
+      (b) => b.track === imagesTrack.id && b.anchor_block === voBlockId
+    );
+    const start = Math.max(
+      vo.start_seconds,
+      ...siblings.map((b) => b.start_seconds + b.duration_seconds + 1)
+    );
+    const block = await api.createBlock({
+      track: imagesTrack.id,
+      start_seconds: start,
+      duration_seconds: 8,
+      content: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "image", attrs: { src: imageUrl } }] },
+        ],
+      },
+    });
+    const anchored = await api.anchorBlock(block.id, voBlockId);
+    set({ blocks: { ...get().blocks, [anchored.id]: anchored } });
   },
 
   attachTag: async (blockId, tagId) => {

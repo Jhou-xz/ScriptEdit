@@ -143,6 +143,7 @@ def import_docx_file(source, project_name=None, title=None):
     vo_track = tracks["voiceover"]
     broll_track = tracks["broll"]
     resource_track = tracks["resources"]
+    images_track = tracks["images"]
 
     image_map = {}
     for rel_id, rel in doc.part.rels.items():
@@ -206,7 +207,15 @@ def import_docx_file(source, project_name=None, title=None):
                     "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
                 )
                 if rel_id in image_map:
-                    append_to_vo(image_para(image_map[rel_id]))
+                    src = image_map[rel_id]
+                    Block.objects.create(
+                        track=images_track,
+                        start_seconds=next_clip_start(8.0),
+                        duration_seconds=8.0,
+                        anchor_block=current_vo,
+                        content=tiptap_doc([image_para(src)]),
+                        source_url=src if src.startswith("http") else "",
+                    )
                     stats["images"] += 1
 
         kind, payload = classify_paragraph(text)

@@ -36,14 +36,32 @@ function extractFirstUrl(content: Record<string, unknown>): string | null {
   return m ? m[0] : null;
 }
 
+function extractImageSrc(content: Record<string, unknown>): string | null {
+  const nodes = (content?.content as Array<Record<string, unknown>>) ?? [];
+  for (const node of nodes) {
+    const inner = (node.content as Array<Record<string, unknown>>) ?? [];
+    for (const child of inner) {
+      if (child.type === "image") {
+        return (child.attrs as Record<string, string>)?.src ?? null;
+      }
+    }
+    if (node.type === "image") {
+      return (node.attrs as Record<string, string>)?.src ?? null;
+    }
+  }
+  return null;
+}
+
 function YouTubeEmbed({
   videoId,
   start,
   end,
+  height,
 }: {
   videoId: string;
   start?: number | null;
   end?: number | null;
+  height?: number;
 }) {
   const [playing, setPlaying] = useState(false);
   if (playing) {
@@ -51,7 +69,7 @@ function YouTubeEmbed({
     if (start != null) params.set("start", String(Math.floor(start)));
     if (end != null) params.set("end", String(Math.ceil(end)));
     return (
-      <div className="yt-embed">
+      <div className="yt-embed" style={height ? { height, aspectRatio: "auto" } : undefined}>
         <iframe
           src={`https://www.youtube.com/embed/${videoId}?${params}`}
           title="YouTube embed"
@@ -63,7 +81,11 @@ function YouTubeEmbed({
   }
   return (
     <button className="yt-thumb" onClick={() => setPlaying(true)}>
-      <img src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`} alt="YouTube thumbnail" />
+      <img
+        src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+        alt="YouTube thumbnail"
+        style={height ? { height, aspectRatio: "auto" } : undefined}
+      />
       <span className="yt-play">▶</span>
     </button>
   );
@@ -130,16 +152,15 @@ function useBlockEditor(block: Block) {
       block.content && Object.keys(block.content).length > 0 ? block.content : "",
     editorProps: {
       attributes: { class: "editor-prose doc-prose" },
-      handlePaste: (view, event) => {
+      handlePaste: (_view, event) => {
         const file = Array.from(event.clipboardData?.files ?? []).find((f) =>
           f.type.startsWith("image/")
         );
         if (!file) return false;
         event.preventDefault();
         api.uploadImage(file).then((url) => {
-          const { state, dispatch } = view;
-          const node = state.schema.nodes.image.create({ src: url });
-          dispatch(state.tr.replaceSelectionWith(node));
+          const current = blockRef.current;
+          if (current) useStore.getState().createImageBlock(current.id, url);
         });
         return true;
       },
@@ -257,9 +278,20 @@ function VoSection({ block }: { block: Block; track: Track | undefined }) {
       ) : (
         <p className="doc-placeholder">{block.content_markdown?.slice(0, 120) || "…"}</p>
       )}
-      {block.editor_note && (
-        <p className="doc-editor-note">Editor's note: {block.editor_note}</p>
-      )}
+      <input
+        className="doc-note-input"
+        placeholder="Editor's note…"
+        defaultValue={block.editor_note}
+        key={`note-${block.id}`}
+        onBlur={(e) => {
+          if (e.target.value !== block.editor_note) {
+            updateBlock(block.id, { editor_note: e.target.value });
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -267,9 +299,9 @@ function VoSection({ block }: { block: Block; track: Track | undefined }) {
         style={{ display: "none" }}
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file && editor) {
+          if (file) {
             api.uploadImage(file).then((url) => {
-              editor.chain().focus().setImage({ src: url }).run();
+              useStore.getState().createImageBlock(block.id, url);
             });
           }
           e.target.value = "";
@@ -277,6 +309,29 @@ function VoSection({ block }: { block: Block; track: Track | undefined }) {
       />
     </section>
   );
+}
+
+const CARD_SIZES_KEY = "scriptedit_card_sizes";
+
+function readCardSizes(): Record<number, { w?: number; h?: number }> {
+  try {
+    return JSON.parse(localStorage.getItem(CARD_SIZES_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function useCardSize(blockId: number) {
+  const [size, setSize] = useState<{ w?: number; h?: number }>(
+    () => readCardSizes()[blockId] ?? {}
+  );
+  const persist = (next: { w?: number; h?: number }) => {
+    setSize(next);
+    const all = readCardSizes();
+    all[blockId] = next;
+    localStorage.setItem(CARD_SIZES_KEY, JSON.stringify(all));
+  };
+  return [size, persist] as const;
 }
 
 function ClipCard({ block, track }: { block: Block; track: Track | undefined }) {
@@ -287,6 +342,49 @@ function ClipCard({ block, track }: { block: Block; track: Track | undefined }) 
   const contentUrl = !block.source_url ? extractFirstUrl(block.content) : null;
   const contentYtId = contentUrl ? extractYouTubeId(contentUrl) : null;
   const embedId = ytId ?? contentYtId;
+  const imageSrc = !embedId ? extractImageSrc(block.content) : null;
+  const [cardSize, setCardSize] = useCardSize(block.id);
+  const [liveSize, setLiveSize] = useState<{ w?: number; h?: number } | null>(null);
+  const gripRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+
+  const applied = liveSize ?? cardSize;
+
+  const onGripPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const card = (e.target as HTMLElement).closest(".doc-card") as HTMLElement;
+    const rail = card?.closest(".doc-rail") as HTMLElement;
+    if (!card || !rail) return;
+    const media = card.querySelector(".yt-embed, .yt-thumb img") as HTMLElement | null;
+    gripRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: (card.getBoundingClientRect().width / rail.getBoundingClientRect().width) * 100,
+      startH: media ? media.getBoundingClientRect().height : 0,
+    };
+    const onMove = (ev: PointerEvent) => {
+      const g = gripRef.current;
+      if (!g) return;
+      const railW = rail.getBoundingClientRect().width;
+      const w = Math.min(100, Math.max(30, g.startW + ((ev.clientX - g.startX) / railW) * 100));
+      const next: { w?: number; h?: number } = { w: Math.round(w * 10) / 10 };
+      if (media && g.startH > 0) {
+        next.h = Math.min(600, Math.max(120, Math.round(g.startH + (ev.clientY - g.startY))));
+      }
+      setLiveSize(next);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setLiveSize((current) => {
+        if (current) setCardSize(current);
+        return null;
+      });
+      gripRef.current = null;
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
 
   return (
     <section
@@ -294,7 +392,13 @@ function ClipCard({ block, track }: { block: Block; track: Track | undefined }) 
         isHovered && !isActive ? "doc-section-hover" : ""
       }`}
       data-block-id={block.id}
-      style={{ borderLeftColor: track?.color ?? "#555" }}
+      style={{
+        borderLeftColor: track?.color ?? "#555",
+        flexBasis: applied.w ? `${applied.w}%` : undefined,
+        flexGrow: applied.w ? 0 : undefined,
+        flexShrink: applied.w ? 0 : undefined,
+        maxWidth: applied.w ? "none" : undefined,
+      }}
     >
       <header className="doc-card-header">
         <span className="doc-card-badges">
@@ -323,7 +427,18 @@ function ClipCard({ block, track }: { block: Block; track: Track | undefined }) 
           videoId={embedId}
           start={block.source_in_seconds}
           end={block.source_out_seconds}
+          height={applied.h}
         />
+      )}
+      {!embedId && imageSrc && (
+        <div className="card-image-wrap">
+          <img
+            className="card-image"
+            src={imageSrc}
+            alt=""
+            style={applied.h ? { height: applied.h } : undefined}
+          />
+        </div>
       )}
 
       {block.source_url && (
@@ -385,6 +500,11 @@ function ClipCard({ block, track }: { block: Block; track: Track | undefined }) 
           if (e.target.value !== block.editor_note)
             updateBlock(block.id, { editor_note: e.target.value });
         }}
+      />
+      <span
+        className="card-resize-grip"
+        title="Drag to resize"
+        onPointerDown={onGripPointerDown}
       />
     </section>
   );

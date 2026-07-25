@@ -4,15 +4,14 @@ import { useStore } from "../store/useStore";
 
 async function exportScript(scriptId: number) {
   const token = getAuthToken();
-  const res = await fetch(`/api/scripts/${scriptId}/export/?fmt=text`, {
+  const res = await fetch(`/api/scripts/${scriptId}/export/?fmt=docx`, {
     headers: token ? { Authorization: `Token ${token}` } : {},
   });
-  const text = await res.text();
-  const blob = new Blob([text], { type: "text/plain" });
+  const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `script_${scriptId}.txt`;
+  a.download = `script_${scriptId}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }

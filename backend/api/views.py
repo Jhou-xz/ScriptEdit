@@ -134,9 +134,21 @@ class ScriptViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def export(self, request, pk=None):
         script = self.get_object()
-        fmt = request.query_params.get("fmt", "json")
+        fmt = request.query_params.get("fmt", "docx")
         if fmt == "json":
             return self.state(request, pk)
+        if fmt == "docx":
+            from .services.docx_export import export_script_docx
+
+            payload = export_script_docx(script)
+            response = HttpResponse(
+                payload,
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+            response["Content-Disposition"] = (
+                f'attachment; filename="script_{script.pk}.docx"'
+            )
+            return response
         text = export_script_text(script)
         response = HttpResponse(text, content_type="text/plain; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="script_{script.pk}.txt"'
