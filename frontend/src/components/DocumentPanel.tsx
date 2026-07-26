@@ -57,39 +57,140 @@ function YouTubeEmbed({
   start,
   end,
   height,
+  autoPlay = false,
 }: {
   videoId: string;
   start?: number | null;
   end?: number | null;
   height?: number;
+  autoPlay?: boolean;
 }) {
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(autoPlay);
+
+  useEffect(() => {
+    if (autoPlay) setPlaying(true);
+  }, [autoPlay]);
+
   if (playing) {
-    const params = new URLSearchParams({ autoplay: "1" });
-    if (start != null) params.set("start", String(Math.floor(start)));
-    if (end != null) params.set("end", String(Math.ceil(end)));
+    const params = new URLSearchParams({ autoplay: "1", enablejsapi: "1" });
+    if (start != null && !Number.isNaN(start)) {
+      params.set("start", String(Math.floor(start)));
+    }
+    if (end != null && !Number.isNaN(end)) {
+      params.set("end", String(Math.ceil(end)));
+    }
+    params.set("loop", "1");
+    params.set("playlist", videoId);
+
     return (
       <div className="yt-embed" style={height ? { height, aspectRatio: "auto" } : undefined}>
         <iframe
-          src={`https://www.youtube.com/embed/${videoId}?${params}`}
-          title="YouTube embed"
+          src={`https://www.youtube.com/embed/${videoId}?${params.toString()}`}
+          title="YouTube video clip preview"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
         />
       </div>
     );
   }
+
+  const timeLabel =
+    start != null && end != null && !Number.isNaN(start) && !Number.isNaN(end)
+      ? `${fmtTs(start)} - ${fmtTs(end)}`
+      : start != null && !Number.isNaN(start)
+      ? `@ ${fmtTs(start)}`
+      : null;
+
   return (
-    <button className="yt-thumb" onClick={() => setPlaying(true)}>
+    <button className="yt-thumb" onClick={() => setPlaying(true)} title="Click to play video clip">
       <img
         src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
         alt="YouTube thumbnail"
         style={height ? { height, aspectRatio: "auto" } : undefined}
       />
+      {timeLabel && <span className="yt-time-badge">⏱️ {timeLabel}</span>}
       <span className="yt-play">▶</span>
     </button>
   );
 }
+
+function ClipPopupPreview({
+  block,
+  track,
+  onClose,
+}: {
+  block: Block;
+  track?: Track;
+  onClose: () => void;
+}) {
+  const embedId = extractYouTubeId(block.source_url);
+  const start = block.source_in_seconds;
+  const end = block.source_out_seconds;
+  const duration =
+    start != null && end != null && !Number.isNaN(start) && !Number.isNaN(end)
+      ? Math.max(0, end - start)
+      : null;
+
+  return (
+    <div className="clip-popup-preview" onClick={(e) => e.stopPropagation()}>
+      <div className="clip-popup-header">
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          {track && (
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: track.color ?? "#2997ff",
+              }}
+            />
+          )}
+          <span className="clip-popup-title" title={block.title || `Block #${block.id}`}>
+            {block.title || `Block #${block.id}`}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {start != null && (
+            <span className="clip-popup-time-badge">
+              ⏱️ {fmtTs(start)} {end != null ? `→ ${fmtTs(end)}` : ""}
+              {duration !== null ? ` (${duration}s clip)` : ""}
+            </span>
+          )}
+          <button className="clip-popup-close" onClick={onClose} title="Close clip preview">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <div className="clip-popup-body">
+        {embedId ? (
+          <YouTubeEmbed
+            videoId={embedId}
+            start={start}
+            end={end}
+            autoPlay
+          />
+        ) : (
+          <div className="clip-popup-placeholder">
+            <span>No YouTube preview available for this clip</span>
+            {block.source_url && (
+              <a href={block.source_url} target="_blank" rel="noreferrer" className="doc-link-text">
+                {block.source_url}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
+      {block.editor_note && (
+        <div className="clip-popup-footer">
+          <span>📝 Note: {block.editor_note}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function SectionBubbleMenu({ editor }: { editor: Editor | null }) {
   if (!editor) return null;
@@ -373,7 +474,17 @@ function useCardSize(blockId: number) {
   return [size, persist] as const;
 }
 
-function ClipCard({ block, track }: { block: Block; track: Track | undefined }) {
+function ClipCard({
+  block,
+  track,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  block: Block;
+  track: Track | undefined;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}) {
   const { updateBlock, deleteBlock, activeBlockId, hoverBlockId, setActiveBlock } = useStore();
   const isActive = activeBlockId === block.id;
   const isHovered = hoverBlockId === block.id;
@@ -432,8 +543,9 @@ function ClipCard({ block, track }: { block: Block; track: Track | undefined }) 
       }`}
       data-block-id={block.id}
       onClick={() => setActiveBlock(block.id)}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       style={{
-
         borderLeftColor: track?.color ?? "#555",
         flexBasis: applied.w ? `${applied.w}%` : undefined,
         flexGrow: applied.w ? 0 : undefined,
@@ -588,8 +700,9 @@ function ClipCard({ block, track }: { block: Block; track: Track | undefined }) 
 }
 
 export function DocumentPanel() {
-  const { blocks, tracks, script, activeBlockId, hoverBlockId, revealInTimeline } = useStore();
+  const { blocks, tracks, script, activeBlockId, hoverBlockId, revealInTimeline, setActiveBlock } = useStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; blockId: number } | null>(null);
+  const [hoveredClipId, setHoveredClipId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const [scriptRatio, setScriptRatio] = usePersistentRatio("scriptedit_split_rail", 0.5);
@@ -668,6 +781,12 @@ export function DocumentPanel() {
 
   if (!script) return null;
 
+  const activePreviewBlock =
+    (hoveredClipId ? blocks[hoveredClipId] : null) ??
+    (activeBlockId && blocks[activeBlockId] && !trackById.get(blocks[activeBlockId].track)?.is_script_track
+      ? blocks[activeBlockId]
+      : null);
+
   const rowState = (vo: Block, cards: Block[]) => {
     const ids = [vo.id, ...cards.map((c) => c.id)];
     if (ids.includes(activeBlockId ?? -1)) return "doc-row-active";
@@ -679,71 +798,90 @@ export function DocumentPanel() {
   const handleLeft = `calc(72px + 24px + (100% - 72px - 48px) * ${scriptRatio} - 3px)`;
 
   return (
-    <div className="doc-panel" ref={scrollRef} onContextMenu={onContextMenu}>
-      <div className="doc-page" ref={pageRef}>
-        <h1 className="doc-script-title">{script.title}</h1>
-        {voBlocks.map((vo) => {
-          const cards = cardsByVo.get(vo.id) ?? [];
-          return (
-            <div
-              key={vo.id}
-              className={`doc-row ${rowState(vo, cards)}`}
-              style={{ gridTemplateColumns: gridColumns }}
-            >
-              <div className="doc-gutter">
-                <span className="doc-timestamp">
-                  {fmtTs(vo.start_seconds)}
-                  <br />–<br />
-                  {fmtTs(vo.start_seconds + vo.duration_seconds)}
-                </span>
-              </div>
-              <div className="doc-script-cell">
-                <VoSection block={vo} track={trackById.get(vo.track)} />
-              </div>
-              <div className="doc-rail">
-                {cards.map((c) => (
-                  <ClipCard key={c.id} block={c} track={trackById.get(c.track)} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-        {voBlocks.length === 0 && (
-          <p className="editor-empty">Add blocks on the timeline to build your script.</p>
-        )}
-        <div
-          className={`doc-rail-handle ${railDragging ? "split-handle-active" : ""}`}
-          style={{ left: handleLeft }}
-          role="separator"
-          aria-orientation="vertical"
-          tabIndex={0}
-          onPointerDown={(e) => {
-            e.preventDefault();
-            setRailDragging(true);
-            (e.target as HTMLElement).setPointerCapture(e.pointerId);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowLeft") setScriptRatio(Math.max(0.15, scriptRatio - 0.02));
-            if (e.key === "ArrowRight") setScriptRatio(Math.min(0.85, scriptRatio + 0.02));
+    <div className="doc-panel-wrap">
+      {activePreviewBlock && (
+        <ClipPopupPreview
+          block={activePreviewBlock}
+          track={trackById.get(activePreviewBlock.track)}
+          onClose={() => {
+            setHoveredClipId(null);
+            setActiveBlock(null);
           }}
         />
-      </div>
-      {contextMenu && (
-        <div
-          className="context-menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => {
-              revealInTimeline(contextMenu.blockId);
-              setContextMenu(null);
-            }}
-          >
-            Reveal in Timeline
-          </button>
-        </div>
       )}
+      <div className="doc-panel" ref={scrollRef} onContextMenu={onContextMenu}>
+        <div className="doc-page" ref={pageRef}>
+          <h1 className="doc-script-title">{script.title}</h1>
+          {voBlocks.map((vo) => {
+            const cards = cardsByVo.get(vo.id) ?? [];
+            return (
+              <div
+                key={vo.id}
+                className={`doc-row ${rowState(vo, cards)}`}
+                style={{ gridTemplateColumns: gridColumns }}
+              >
+                <div className="doc-gutter">
+                  <span className="doc-timestamp">
+                    {fmtTs(vo.start_seconds)}
+                    <br />–<br />
+                    {fmtTs(vo.start_seconds + vo.duration_seconds)}
+                  </span>
+                </div>
+                <div className="doc-script-cell">
+                  <VoSection block={vo} track={trackById.get(vo.track)} />
+                </div>
+                <div className="doc-rail">
+                  {cards.map((c) => (
+                    <ClipCard
+                      key={c.id}
+                      block={c}
+                      track={trackById.get(c.track)}
+                      onMouseEnter={() => setHoveredClipId(c.id)}
+                      onMouseLeave={() => setHoveredClipId(null)}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          {voBlocks.length === 0 && (
+            <p className="editor-empty">Add blocks on the timeline to build your script.</p>
+          )}
+          <div
+            className={`doc-rail-handle ${railDragging ? "split-handle-active" : ""}`}
+            style={{ left: handleLeft }}
+            role="separator"
+            aria-orientation="vertical"
+            tabIndex={0}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              setRailDragging(true);
+              (e.target as HTMLElement).setPointerCapture(e.pointerId);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") setScriptRatio(Math.max(0.15, scriptRatio - 0.02));
+              if (e.key === "ArrowRight") setScriptRatio(Math.min(0.85, scriptRatio + 0.02));
+            }}
+          />
+        </div>
+        {contextMenu && (
+          <div
+            className="context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                revealInTimeline(contextMenu.blockId);
+                setContextMenu(null);
+              }}
+            >
+              Reveal in Timeline
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+

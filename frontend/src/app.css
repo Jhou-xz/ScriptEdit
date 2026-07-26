@@ -1311,3 +1311,120 @@
   border-radius: var(--radius-sm);
 }
 
+/* ---------- Video Clip Pop-up Preview ---------- */
+.doc-panel-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.clip-popup-preview {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  width: 320px;
+  background: #232323;
+  border: 1px solid #3a3a3a;
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  overflow: hidden;
+  animation: popupSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popupSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.clip-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.clip-popup-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clip-popup-time-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-dim);
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+}
+
+.clip-popup-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.clip-popup-close:hover {
+  color: #ffffff;
+}
+
+.clip-popup-body {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000000;
+}
+
+.clip-popup-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.clip-popup-footer {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: #1a1a1a;
+  border-top: 1px solid #2a2a2a;
+}
+
+.yt-time-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+

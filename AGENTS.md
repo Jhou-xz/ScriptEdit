@@ -42,7 +42,7 @@ frontend/src/
   store/useStore.ts   Zustand store: all state + chat state + all mutations + undo stack + WS handler
   components/
     TopNav.tsx        brand + script switcher (left), AI Assistant toggle + Import/Export (right)
-    DocumentPanel.tsx document view: VoSection, ClipCard, YouTubeEmbed, BubbleMenu
+    DocumentPanel.tsx document view: VoSection, ClipCard, YouTubeEmbed, ClipPopupPreview, BubbleMenu
     TimelinePanel.tsx custom timeline: lanes, sub-rows, drag/resize, wheel pan/zoom
     AiChatPanel.tsx   AI Assistant sidebar: Astryx Chat UI, context banner, target badges, research toggle, diff proposal cards
   theme/tokens.css    design tokens (dark Premiere-style)
