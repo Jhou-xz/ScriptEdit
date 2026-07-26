@@ -353,31 +353,10 @@ function VoSection({ block }: { block: Block; track: Track | undefined }) {
           }}
         />
         {isActive && (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "2px 8px",
-              borderRadius: "12px",
-              background: "#2997ff",
-              color: "#ffffff",
-              fontSize: "11px",
-              fontWeight: 600,
-              flexShrink: 0,
-            }}
-          >
+          <span className="doc-ai-chat-badge">
             <span>🤖 Included in AI Chat</span>
             <button
-              style={{
-                background: "none",
-                border: "none",
-                color: "#ffffff",
-                cursor: "pointer",
-                padding: "0 2px",
-                fontSize: "12px",
-                lineHeight: 1,
-              }}
+              className="doc-ai-chat-badge-close"
               title="Deselect from AI Chat"
               onClick={(e) => {
                 e.stopPropagation();
@@ -395,8 +374,7 @@ function VoSection({ block }: { block: Block; track: Track | undefined }) {
           )}
         </span>
         <button
-          className="doc-icon-btn"
-          style={{ background: "rgba(41, 151, 255, 0.15)", border: "1px solid rgba(41, 151, 255, 0.4)", color: "var(--color-accent)", padding: "2px 8px", fontSize: "11px", fontWeight: 600 }}
+          className="doc-icon-btn doc-icon-ai"
           title="Ask AI Copilot for targeted suggestions on this section"
           onClick={(e) => {
             e.stopPropagation();
@@ -578,29 +556,12 @@ function ClipCard({
           </span>
           {isActive && (
             <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: "2px 8px",
-                borderRadius: "12px",
-                background: track?.color ?? "#2997ff",
-                color: "#ffffff",
-                fontSize: "11px",
-                fontWeight: 600,
-              }}
+              className="doc-ai-chat-badge"
+              style={{ background: track?.color ?? undefined }}
             >
               <span>🤖 Included in AI Chat</span>
               <button
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                  padding: "0 2px",
-                  fontSize: "12px",
-                  lineHeight: 1,
-                }}
+                className="doc-ai-chat-badge-close"
                 title="Deselect from AI Chat"
                 onClick={(e) => {
                   e.stopPropagation();
