@@ -209,6 +209,7 @@ export const api = {
     scriptId: number,
     messages: Array<{ role: string; content: string }>,
     targetBlockId: number | null,
+    webSearch: boolean = false,
     onChunk: (text: string) => void
   ): Promise<void> => {
     const res = await fetch(`${API_BASE}/scripts/${scriptId}/chat/`, {
@@ -217,8 +218,9 @@ export const api = {
         "Content-Type": "application/json",
         "X-Client-Id": clientId!,
       },
-      body: JSON.stringify({ messages, target_block_id: targetBlockId }),
+      body: JSON.stringify({ messages, target_block_id: targetBlockId, web_search: webSearch }),
     });
+
     if (!res.ok) throw new Error(`Chat failed: ${res.status}`);
     const reader = res.body?.getReader();
     if (!reader) return;

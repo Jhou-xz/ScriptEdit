@@ -142,6 +142,8 @@ export function AiChatPanel() {
     setActiveBlock,
     chatMessages,
     isChatStreaming,
+    webSearchEnabled,
+    toggleWebSearch,
     sendChatMessage,
     clearChatMessages,
     setChatOpen,
@@ -201,8 +203,15 @@ export function AiChatPanel() {
             Script Editing Copilot
           </span>
           {isChatStreaming && <Badge label="Thinking…" variant="info" />}
+          {webSearchEnabled && <Badge label="🌐 Web Research Active" variant="blue" />}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <Button
+            label={webSearchEnabled ? "🌐 Research ON" : "🌐 Research OFF"}
+            variant={webSearchEnabled ? "primary" : "secondary"}
+            size="sm"
+            onClick={toggleWebSearch}
+          />
           <Button
             label="Clear"
             variant="ghost"
@@ -318,7 +327,7 @@ export function AiChatPanel() {
               }
               input={
                 <ChatComposerInput
-                  placeholder="Ask Script Editing Copilot to revise prose, re-time clips, or analyze full script..."
+                  placeholder={webSearchEnabled ? "Search web & ask Copilot for facts, B-roll, or revisions..." : "Ask Script Editing Copilot to revise prose, re-time clips, or analyze full script..."}
                   value={inputPrompt}
                   onChange={(val) => setInputPrompt(val)}
                   onSubmit={handleSend}
@@ -334,6 +343,7 @@ export function AiChatPanel() {
             />
           }
         >
+
 
           <ChatMessageList>
             {chatMessages.length === 0 && (

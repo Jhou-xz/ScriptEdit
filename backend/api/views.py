@@ -139,6 +139,8 @@ class ScriptViewSet(viewsets.ModelViewSet):
         script = self.get_object()
         messages = request.data.get("messages", [])
         target_block_id = request.data.get("target_block_id")
+        web_search = bool(request.data.get("web_search", False))
+
         if target_block_id is not None:
             try:
                 target_block_id = int(target_block_id)
@@ -146,12 +148,13 @@ class ScriptViewSet(viewsets.ModelViewSet):
                 target_block_id = None
 
         response = StreamingHttpResponse(
-            ai_chat.stream_chat_response(script, messages, target_block_id),
+            ai_chat.stream_chat_response(script, messages, target_block_id, web_search),
             content_type="text/event-stream",
         )
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
+
 
 
     @action(detail=True, methods=["get"])

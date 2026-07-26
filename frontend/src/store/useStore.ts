@@ -44,6 +44,7 @@ interface StoreState {
   sidebarOpen: boolean;
   isChatOpen: boolean;
   isChatStreaming: boolean;
+  webSearchEnabled: boolean;
   chatMessages: ChatMessage[];
   presence: Record<number, PresenceInfo>;
   agentFlash: Record<number, number>;
@@ -56,7 +57,9 @@ interface StoreState {
   connectWs: () => void;
   handleWsEvent: (event: { type: string; actor: string; object: unknown }) => void;
 
+  toggleWebSearch: () => void;
   setActiveBlock: (id: number | null) => void;
+
   setHoverBlock: (id: number | null) => void;
   revealInTimeline: (blockId: number) => void;
   setPxPerSecond: (v: number) => void;
@@ -112,6 +115,8 @@ export const useStore = create<StoreState>((set, get) => ({
   hoverBlockId: null,
   revealSignal: null,
   pxPerSecond: 6,
+  webSearchEnabled: false,
+
   trackHeights: (() => {
     try {
       return JSON.parse(localStorage.getItem("scriptedit_track_heights") ?? "{}");
@@ -240,10 +245,11 @@ export const useStore = create<StoreState>((set, get) => ({
   },
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
   toggleChat: () => set({ isChatOpen: !get().isChatOpen }),
+  toggleWebSearch: () => set({ webSearchEnabled: !get().webSearchEnabled }),
   setChatOpen: (open) => set({ isChatOpen: open }),
   clearChatMessages: () => set({ chatMessages: [] }),
   sendChatMessage: async (content, targetBlockId) => {
-    const { script, chatMessages, activeBlockId } = get();
+    const { script, chatMessages, activeBlockId, webSearchEnabled } = get();
     if (!script) return;
     const targetId = targetBlockId !== undefined ? targetBlockId : activeBlockId;
 
@@ -280,6 +286,7 @@ export const useStore = create<StoreState>((set, get) => ({
         script.id,
         apiHistory,
         targetId,
+        webSearchEnabled,
         (chunk) => {
           set((state) => ({
             chatMessages: state.chatMessages.map((m) =>

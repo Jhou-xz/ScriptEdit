@@ -70,19 +70,39 @@ def safe_urlopen(url: str, data: bytes, headers: dict, method: str = "POST", tim
         raise e
 
 
+from api.services.ai_search import perform_web_search
+
+
 def stream_chat_response(
     script: Script,
     messages: List[Dict[str, str]],
-    target_block_id: int | None = None
+    target_block_id: int | None = None,
+    web_search: bool = False
 ) -> Generator[str, None, None]:
     config = get_api_config()
     context_blocks = build_chat_context(script, target_block_id)
     
+    last_user_msg = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
+    search_keywords = ["search", "find", "fact", "date", "who", "when", "where", "link", "url", "broll", "b-roll", "history", "source", "verify", "news"]
+    should_search = web_search or any(k in last_user_msg.lower() for k in search_keywords)
+
+    web_results = []
+    if should_search and last_user_msg:
+        query = f"{script.title} {last_user_msg}"[:120]
+        web_results = perform_web_search(query, max_results=4)
+
     system_message = (
         f"{SYSTEM_PROMPT}\n\n"
         f"CURRENT SCRIPT CONTEXT ({script.title}):\n"
         f"{json.dumps(context_blocks, indent=2)}"
     )
+    if web_results:
+        system_message += (
+            f"\n\nLIVE WEB SEARCH & FACT-CHECKING RESULTS:\n"
+            f"{json.dumps(web_results, indent=2)}\n\n"
+            f"INSTRUCTION: Incorporate these verified real-world facts, dates, and media URLs into your commentary and proposal cards as appropriate. Always cite web links using standard markdown links [Source Title](URL)."
+        )
+
 
     if config is None:
         target_text = "Sample section text"
