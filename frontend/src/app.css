@@ -900,9 +900,55 @@
   line-height: 1.4;
 }
 
+.doc-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--divider-dark);
+}
+
+.doc-script-title {
+  margin: 0;
+}
+
+.doc-layout-toggle-btn {
+  background: var(--surface-header);
+  border: 1px solid var(--divider-hairline);
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.doc-layout-toggle-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--color-accent);
+}
+
+.doc-under-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px dashed var(--divider-hairline);
+}
+
+.doc-under-cards .clip-card {
+  flex: 1 1 280px;
+  max-width: 100%;
+}
+
 .doc-script-cell {
   min-width: 0;
 }
+
 
 .doc-rail {
   min-width: 0;

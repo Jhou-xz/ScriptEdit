@@ -720,6 +720,19 @@ export function DocumentPanel() {
   const pageRef = useRef<HTMLDivElement>(null);
   const [scriptRatio, setScriptRatio] = usePersistentRatio("scriptedit_split_rail", 0.5);
   const [railDragging, setRailDragging] = useState(false);
+  const [cardLayout, setCardLayout] = useState<"under" | "side">(() => {
+    try {
+      return (localStorage.getItem("scriptedit_doc_card_layout") as "under" | "side") ?? "under";
+    } catch {
+      return "under";
+    }
+  });
+
+  const toggleCardLayout = () => {
+    const next = cardLayout === "under" ? "side" : "under";
+    setCardLayout(next);
+    localStorage.setItem("scriptedit_doc_card_layout", next);
+  };
 
   useEffect(() => {
     if (!railDragging) return;
@@ -807,7 +820,10 @@ export function DocumentPanel() {
     return "";
   };
 
-  const gridColumns = `72px minmax(0, ${scriptRatio}fr) minmax(0, ${1 - scriptRatio}fr)`;
+  const isUnder = cardLayout === "under";
+  const gridColumns = isUnder
+    ? "72px minmax(0, 1fr)"
+    : `72px minmax(0, ${scriptRatio}fr) minmax(0, ${1 - scriptRatio}fr)`;
   const handleLeft = `calc(72px + 24px + (100% - 72px - 48px) * ${scriptRatio} - 3px)`;
 
   return (
@@ -824,13 +840,22 @@ export function DocumentPanel() {
       )}
       <div className="doc-panel" ref={scrollRef} onContextMenu={onContextMenu}>
         <div className="doc-page" ref={pageRef}>
-          <h1 className="doc-script-title">{script.title}</h1>
+          <div className="doc-page-header">
+            <h1 className="doc-script-title">{script.title}</h1>
+            <button
+              className="doc-layout-toggle-btn"
+              title="Switch between under-script cards and side-rail cards"
+              onClick={toggleCardLayout}
+            >
+              {isUnder ? "📦 Cards Under Script" : "📑 Cards Side Rail"}
+            </button>
+          </div>
           {voBlocks.map((vo) => {
             const cards = cardsByVo.get(vo.id) ?? [];
             return (
               <div
                 key={vo.id}
-                className={`doc-row ${rowState(vo, cards)}`}
+                className={`doc-row ${rowState(vo, cards)} ${isUnder ? "doc-row-under" : ""}`}
                 style={{ gridTemplateColumns: gridColumns }}
               >
                 <div className="doc-gutter">
@@ -842,41 +867,59 @@ export function DocumentPanel() {
                 </div>
                 <div className="doc-script-cell">
                   <VoSection block={vo} track={trackById.get(vo.track)} />
+                  {isUnder && cards.length > 0 && (
+                    <div className="doc-under-cards">
+                      {cards.map((c) => (
+                        <ClipCard
+                          key={c.id}
+                          block={c}
+                          track={trackById.get(c.track)}
+                          onMouseEnter={() => setHoveredClipId(c.id)}
+                          onMouseLeave={() => setHoveredClipId(null)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="doc-rail">
-                  {cards.map((c) => (
-                    <ClipCard
-                      key={c.id}
-                      block={c}
-                      track={trackById.get(c.track)}
-                      onMouseEnter={() => setHoveredClipId(c.id)}
-                      onMouseLeave={() => setHoveredClipId(null)}
-                    />
-                  ))}
-                </div>
+                {!isUnder && (
+                  <div className="doc-rail">
+                    {cards.map((c) => (
+                      <ClipCard
+                        key={c.id}
+                        block={c}
+                        track={trackById.get(c.track)}
+                        onMouseEnter={() => setHoveredClipId(c.id)}
+                        onMouseLeave={() => setHoveredClipId(null)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
           {voBlocks.length === 0 && (
             <p className="editor-empty">Add blocks on the timeline to build your script.</p>
           )}
-          <div
-            className={`doc-rail-handle ${railDragging ? "split-handle-active" : ""}`}
-            style={{ left: handleLeft }}
-            role="separator"
-            aria-orientation="vertical"
-            tabIndex={0}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              setRailDragging(true);
-              (e.target as HTMLElement).setPointerCapture(e.pointerId);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowLeft") setScriptRatio(Math.max(0.15, scriptRatio - 0.02));
-              if (e.key === "ArrowRight") setScriptRatio(Math.min(0.85, scriptRatio + 0.02));
-            }}
-          />
+          {!isUnder && (
+            <div
+              className={`doc-rail-handle ${railDragging ? "split-handle-active" : ""}`}
+              style={{ left: handleLeft }}
+              role="separator"
+              aria-orientation="vertical"
+              tabIndex={0}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                setRailDragging(true);
+                (e.target as HTMLElement).setPointerCapture(e.pointerId);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") setScriptRatio(Math.max(0.15, scriptRatio - 0.02));
+                if (e.key === "ArrowRight") setScriptRatio(Math.min(0.85, scriptRatio + 0.02));
+              }}
+            />
+          )}
         </div>
+
         {contextMenu && (
           <div
             className="context-menu"
