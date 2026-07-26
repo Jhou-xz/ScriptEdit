@@ -23,29 +23,32 @@ Verify: `npm run build` (frontend), `curl localhost:8000/api/schema/` (backend).
 
 ```
 backend/
-  config/         settings.py (AllowAny auth, CORS all, InMemory channels), urls.py, asgi.py
+  config/         settings.py (AllowAny auth, CORS all, InMemory channels, loads .env), urls.py, asgi.py
   api/
     models.py     Project → Script → Track → Block (+ Tag/Resource legacy M2M)
-    views.py      ViewSets + script state/export/import/auto_layout actions
+    views.py      ViewSets + script state/export/import/auto_layout/chat actions
     serializers.py
     markdown.py   TipTap JSON → plaintext/markdown/word_count
     broadcast.py  WebSocket broadcast + actor_from_request
     consumers.py  ScriptConsumer at ws/scripts/{id}/
     services/
       docx_import.py  .docx parser → tracks/blocks (shared by command + endpoint)
-      ai_layout.py    LLM auto-layout stub (needs OPENAI_API_KEY or ANTHROPIC_API_KEY)
+      ai_chat.py      LLM Script Editing Copilot SSE streaming (DEEPSEEK_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY)
+      ai_layout.py    LLM auto-layout service
     management/commands/import_docx.py
 frontend/src/
-  api/client.ts       typed API client, clientId echo-guard, OWN_ACTOR
-  store/useStore.ts   Zustand store: all state + all mutations + undo stack + WS handler
+  api/client.ts       typed API client, streamScriptChat SSE helper, clientId echo-guard, OWN_ACTOR
+  store/useStore.ts   Zustand store: all state + chat state + all mutations + undo stack + WS handler
   components/
-    TopNav.tsx        brand + script switcher (left), Import/Export (right)
+    TopNav.tsx        brand + script switcher (left), AI Assistant toggle + Import/Export (right)
     DocumentPanel.tsx document view: VoSection, ClipCard, YouTubeEmbed, BubbleMenu
     TimelinePanel.tsx custom timeline: lanes, sub-rows, drag/resize, wheel pan/zoom
+    AiChatPanel.tsx   AI Assistant sidebar: Astryx Chat UI, context banner, target badges, diff proposal cards
   theme/tokens.css    design tokens (dark Premiere-style)
   app.css             all component styles
 apple/DESIGN.md       Apple design-system reference (grammar only; UI is dark Premiere-style)
 ```
+
 
 ## Data model (backend/api/models.py)
 
@@ -70,8 +73,10 @@ apple/DESIGN.md       Apple design-system reference (grammar only; UI is dark Pr
   - `POST/DELETE /api/blocks/{id}/tags/{tag_id}/`, `.../resources/{resource_id}/`
   - `GET /api/scripts/{id}/export/?fmt=docx|text|json` — NOTE: param is `fmt`, not `format` (`?format=` collides with DRF content negotiation and 404s on `text`). `docx` (default in UI) mirrors the faceless-doc format via `services/docx_export.py` (headings, prose, clip parens, quotes, bare URLs, embedded images).
   - `POST /api/scripts/import/` (multipart `file`=.docx) — creates a new script from a faceless-doc script.
-  - `POST /api/scripts/{id}/auto_layout/` — LLM layout suggestions; 501 until an API key is set.
+  - `POST /api/scripts/{id}/auto_layout/` — LLM layout suggestions.
+  - `POST /api/scripts/{id}/chat/` — SSE streaming Script Editing Copilot endpoint (`text/event-stream`). Takes `{messages: [...], target_block_id: int|null}`. Uses `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` from `backend/.env`.
   - `POST /api/media/` (multipart image) → `{url}` for editor images.
+
 - Every response is the updated object; every mutation broadcasts.
 
 ## WebSocket protocol

@@ -8,14 +8,16 @@ Built **agent-first**: the backend is a headless state machine with a granular R
 
 ## Features
 
-- **Document view (top):** your whole script as a chronological, Word-like document — chapters, serif narration text, styled quotes, editor's notes, images, YouTube embeds cued to in/out points, and clickable link cards. Everything is editable in place.
+- **Document view (top):** your whole script as a chronological, Word-like document — chapters, serif narration text, styled quotes, editor's notes, images, YouTube embeds cued to in/out points, and clickable link cards. Everything is editable in place. Clicking any section automatically syncs it as active context for AI chat.
 - **Timeline view (bottom):** multi-track lanes with saturated clips. Word-count-based auto-width pacing (150 wpm default), drag to move/resize, overlapping clips fan out into sub-rows, wheel to pan, Ctrl/Cmd+wheel to zoom, draggable track reordering.
-- **Two-way sync:** click a clip to scroll + highlight its document section; right-click a section → "Reveal in Timeline"; hover cross-highlighting.
+- **AI Script Editing Copilot (right sidebar):** VS Code / Antigravity IDE style chat panel powered by real-time LLM streaming (DeepSeek API `DEEPSEEK_API_KEY`, OpenAI, or Anthropic). Full-script awareness by default with interactive target section syncing from Document review or Timeline, timeline timestamps (`[0:00 - 0:45]`), visual section badges (`🤖 Included in AI Chat`), and interactive **Diff Proposal Cards** (`BEFORE` vs `AFTER`) with instant **Apply Edit** capabilities.
+- **Two-way sync:** click a clip or section to scroll + highlight; visual AI target indicators; right-click a section → "Reveal in Timeline"; hover cross-highlighting.
 - **Free-form tracks:** add, rename, recolor, reorder, delete tracks; toggle "script track" (word-count auto-width + anchor eligibility) per track.
-- **VS Code-style splits:** drag the edge between document and timeline, or between the script column and the cards rail — ratios persist.
+- **VS Code-style splits:** drag the edge between document, timeline, and AI chat panel — split ratios persist.
 - **One-click .docx import:** parses faceless-doc scripts (headings → chapters, prose → VO blocks, `(Muted Background Clip @ 0:54 - 0:57 URL)` → structured clip cards, quotes, links, embedded images).
-- **Export:** timestamped plain-text script that mirrors the document, or full JSON state.
-- **Agent API:** token-authenticated granular endpoints (`move`, `resize`, `anchor`, attach tags/resources), OpenAPI 3.0 schema at `/api/schema/`, WebSocket events per script, presence badges for concurrent edits. LLM auto-layout endpoint ready (set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`).
+- **Export:** timestamped plain-text script that mirrors the document, docx, or full JSON state.
+- **Agent API:** token-authenticated granular endpoints (`move`, `resize`, `anchor`, attach tags/resources), OpenAPI 3.0 schema at `/api/schema/`, WebSocket events per script, presence badges for concurrent edits. Real-time streaming LLM chat endpoint at `/api/scripts/{id}/chat/` (set `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` in `backend/.env`).
+
 
 ## Quick start
 
@@ -30,8 +32,10 @@ cd backend
 python3 -m venv .venv && .venv/bin/pip install django djangorestframework \
   django-cors-headers drf-spectacular channels channels_redis daphne \
   "psycopg[binary]" python-docx
+cp .env.example .env # Set DEEPSEEK_API_KEY=sk-... in .env
 .venv/bin/python manage.py migrate
 .venv/bin/python manage.py runserver 127.0.0.1:8000
+
 
 # 3. Frontend (new terminal)
 cd frontend
