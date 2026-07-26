@@ -14,6 +14,14 @@ voiceover they belong to, and anchor them where possible. Do not modify voiceove
 
 
 def get_api_config():
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        return {
+            "url": "https://api.deepseek.com/chat/completions",
+            "key": os.environ["DEEPSEEK_API_KEY"],
+            "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro"),
+            "provider": "openai",
+        }
+
     if os.environ.get("OPENAI_API_KEY"):
         return {
             "url": "https://api.openai.com/v1/chat/completions",
@@ -29,6 +37,7 @@ def get_api_config():
             "provider": "anthropic",
         }
     return None
+
 
 
 def is_configured():

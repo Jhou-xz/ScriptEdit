@@ -131,6 +131,29 @@ class ScriptViewSet(viewsets.ModelViewSet):
             broadcast(script.pk, "block.updated", BlockSerializer(block).data, actor=actor)
         return Response({"applied": applied, "layout": layout})
 
+    @action(detail=True, methods=["post"], url_path="chat")
+    def chat(self, request, pk=None):
+        from .services import ai_chat
+        from django.http import StreamingHttpResponse
+
+        script = self.get_object()
+        messages = request.data.get("messages", [])
+        target_block_id = request.data.get("target_block_id")
+        if target_block_id is not None:
+            try:
+                target_block_id = int(target_block_id)
+            except (ValueError, TypeError):
+                target_block_id = None
+
+        response = StreamingHttpResponse(
+            ai_chat.stream_chat_response(script, messages, target_block_id),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+
     @action(detail=True, methods=["get"])
     def export(self, request, pk=None):
         script = self.get_object()

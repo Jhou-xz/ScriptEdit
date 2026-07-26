@@ -215,7 +215,7 @@ function useInViewportOnce() {
 }
 
 function VoSection({ block }: { block: Block; track: Track | undefined }) {
-  const { updateBlock, deleteBlock, script, activeBlockId, hoverBlockId, presence } =
+  const { updateBlock, deleteBlock, script, activeBlockId, hoverBlockId, presence, setActiveBlock } =
     useStore();
   const { editor, fileInputRef } = useBlockEditor(block);  const { ref, visible } = useInViewportOnce();
   const [titleDraft, setTitleDraft] = useState(block.title);
@@ -235,7 +235,9 @@ function VoSection({ block }: { block: Block; track: Track | undefined }) {
         isHovered && !isActive ? "doc-section-hover" : ""
       }`}
       data-block-id={block.id}
+      onClick={() => setActiveBlock(block.id)}
     >
+
       <header className="doc-section-header">
         <input
           className="doc-title-input"
@@ -249,6 +251,42 @@ function VoSection({ block }: { block: Block; track: Track | undefined }) {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
         />
+        {isActive && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "2px 8px",
+              borderRadius: "12px",
+              background: "#2997ff",
+              color: "#ffffff",
+              fontSize: "11px",
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            <span>🤖 Included in AI Chat</span>
+            <button
+              style={{
+                background: "none",
+                border: "none",
+                color: "#ffffff",
+                cursor: "pointer",
+                padding: "0 2px",
+                fontSize: "12px",
+                lineHeight: 1,
+              }}
+              title="Deselect from AI Chat"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveBlock(null);
+              }}
+            >
+              ✕
+            </button>
+          </span>
+        )}
         <span className="doc-section-meta">
           {block.word_count} words · ~{fmtTs(estSeconds)}
           {holder && holder.holder !== "user" && (
@@ -261,6 +299,7 @@ function VoSection({ block }: { block: Block; track: Track | undefined }) {
           onClick={() => fileInputRef.current?.click()}
         >
           Img
+
         </button>
         <button
           className="doc-icon-btn doc-icon-danger"
@@ -335,7 +374,7 @@ function useCardSize(blockId: number) {
 }
 
 function ClipCard({ block, track }: { block: Block; track: Track | undefined }) {
-  const { updateBlock, deleteBlock, activeBlockId, hoverBlockId } = useStore();
+  const { updateBlock, deleteBlock, activeBlockId, hoverBlockId, setActiveBlock } = useStore();
   const isActive = activeBlockId === block.id;
   const isHovered = hoverBlockId === block.id;
   const ytId = extractYouTubeId(block.source_url);
@@ -392,7 +431,9 @@ function ClipCard({ block, track }: { block: Block; track: Track | undefined }) 
         isHovered && !isActive ? "doc-section-hover" : ""
       }`}
       data-block-id={block.id}
+      onClick={() => setActiveBlock(block.id)}
       style={{
+
         borderLeftColor: track?.color ?? "#555",
         flexBasis: applied.w ? `${applied.w}%` : undefined,
         flexGrow: applied.w ? 0 : undefined,
@@ -412,7 +453,43 @@ function ClipCard({ block, track }: { block: Block; track: Track | undefined }) 
           <span className="doc-timestamp">
             {fmtTs(block.start_seconds)} – {fmtTs(block.start_seconds + block.duration_seconds)}
           </span>
+          {isActive && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "2px 8px",
+                borderRadius: "12px",
+                background: track?.color ?? "#2997ff",
+                color: "#ffffff",
+                fontSize: "11px",
+                fontWeight: 600,
+              }}
+            >
+              <span>🤖 Included in AI Chat</span>
+              <button
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#ffffff",
+                  cursor: "pointer",
+                  padding: "0 2px",
+                  fontSize: "12px",
+                  lineHeight: 1,
+                }}
+                title="Deselect from AI Chat"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveBlock(null);
+                }}
+              >
+                ✕
+              </button>
+            </span>
+          )}
         </span>
+
         <button
           className="doc-icon-btn doc-icon-danger"
           title="Delete"

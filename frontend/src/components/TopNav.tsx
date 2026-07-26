@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { TopNav as AstryxTopNav, TopNavHeading, Button, Selector } from "@astryxdesign/core";
 import { getAuthToken } from "../api/client";
 import { useStore } from "../store/useStore";
 
@@ -17,8 +18,9 @@ async function exportScript(scriptId: number) {
 }
 
 export function TopNav() {
-  const { script, scripts, project, loadScript, importScript, undo } = useStore();
+  const { script, scripts, loadScript, importScript, undo, isChatOpen, toggleChat } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
@@ -45,47 +47,67 @@ export function TopNav() {
     }
   };
 
+  const scriptOptions = scripts.map((s) => ({
+    value: String(s.id),
+    label: s.title,
+  }));
+
   return (
-    <nav className="topnav">
-      <span className="topnav-brand">ScriptEdit</span>
-      <select
-        className="script-switcher"
-        value={script?.id ?? ""}
-        onChange={(e) => loadScript(Number(e.target.value))}
-        title={`${project?.name ?? ""} — select script`}
-      >
-        {scripts.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.title}
-          </option>
-        ))}
-      </select>
-      <span style={{ flex: 1 }} />
-      <div className="topnav-actions">
-        <button
-          className="nav-btn"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={importing}
-        >
-          {importing ? "Importing…" : "Import"}
-        </button>
-        {script && (
-          <button className="nav-btn" onClick={() => exportScript(script.id)}>
-            Export
-          </button>
-        )}
-      </div>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".docx"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onImportFile(file);
-          e.target.value = "";
-        }}
-      />
-    </nav>
+    <AstryxTopNav
+      heading={<TopNavHeading>ScriptEdit</TopNavHeading>}
+      startContent={
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: "240px" }}>
+          {scripts.length > 0 && (
+            <Selector
+              label="Select script"
+              isLabelHidden
+              value={script ? String(script.id) : ""}
+              options={scriptOptions}
+              onChange={(val) => loadScript(Number(val))}
+              size="sm"
+            />
+          )}
+        </div>
+      }
+      endContent={
+        <div className="topnav-actions" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Button
+            label="AI Assistant"
+            variant={isChatOpen ? "primary" : "secondary"}
+            size="sm"
+            onClick={toggleChat}
+          />
+          <Button
+            label={importing ? "Importing…" : "Import"}
+            variant="secondary"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            isDisabled={importing}
+          />
+          {script && (
+            <Button
+              label="Export"
+              variant="primary"
+              size="sm"
+              onClick={() => exportScript(script.id)}
+            />
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".docx"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onImportFile(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      }
+
+    />
   );
 }
+
+

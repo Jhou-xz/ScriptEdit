@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Badge } from "@astryxdesign/core";
 import type { Block, Track } from "../api/client";
 import { useStore } from "../store/useStore";
 
@@ -483,7 +484,7 @@ export function TimelinePanel() {
   return (
     <div className="timeline-panel">
       <div className="timeline-toolbar">
-        <span className="timeline-toolbar-label">Timeline</span>
+        <Badge label="Timeline" variant="neutral" />
         <div className="zoom-control">
           <span className="zoom-label">Zoom</span>
           <input
@@ -547,9 +548,12 @@ export function TimelinePanel() {
                 }}
               />
             ) : (
-              <button className="track-add-lane-btn" onClick={() => setAddingTrack(true)}>
-                + Add Track
-              </button>
+              <Button
+                label="+ Add Track"
+                variant="secondary"
+                size="sm"
+                onClick={() => setAddingTrack(true)}
+              />
             )}
           </div>
         </div>
@@ -643,3 +647,4 @@ export function TimelinePanel() {
     </div>
   );
 }
+

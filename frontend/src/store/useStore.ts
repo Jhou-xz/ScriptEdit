@@ -20,6 +20,14 @@ interface PresenceInfo {
   expires: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  targetBlockId?: number | null;
+  timestamp: number;
+}
+
 interface StoreState {
   project: Project | null;
   script: Script | null;
@@ -34,6 +42,9 @@ interface StoreState {
   pxPerSecond: number;
   trackHeights: Record<number, number>;
   sidebarOpen: boolean;
+  isChatOpen: boolean;
+  isChatStreaming: boolean;
+  chatMessages: ChatMessage[];
   presence: Record<number, PresenceInfo>;
   agentFlash: Record<number, number>;
   undoStack: UndoEntry[];
@@ -51,6 +62,10 @@ interface StoreState {
   setPxPerSecond: (v: number) => void;
   setTrackHeight: (trackId: number, height: number | null) => void;
   toggleSidebar: () => void;
+  toggleChat: () => void;
+  setChatOpen: (open: boolean) => void;
+  sendChatMessage: (content: string, targetBlockId?: number | null) => Promise<void>;
+  clearChatMessages: () => void;
 
   updateBlockContent: (id: number, content: Record<string, unknown>) => Promise<void>;
   updateBlock: (id: number, data: Partial<Block>) => Promise<void>;
@@ -80,6 +95,7 @@ interface StoreState {
   pushUndo: (entry: UndoEntry) => void;
 }
 
+
 function indexById<T extends { id: number }>(items: T[]): Record<number, T> {
   return Object.fromEntries(items.map((i) => [i.id, i]));
 }
@@ -104,10 +120,14 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   })(),
   sidebarOpen: true,
+  isChatOpen: false,
+  isChatStreaming: false,
+  chatMessages: [],
   presence: {},
   agentFlash: {},
   undoStack: [],
   ws: null,
+
 
   bootstrap: async () => {
     let [project] = await api.listProjects();
@@ -219,6 +239,71 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ trackHeights: heights });
   },
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
+  toggleChat: () => set({ isChatOpen: !get().isChatOpen }),
+  setChatOpen: (open) => set({ isChatOpen: open }),
+  clearChatMessages: () => set({ chatMessages: [] }),
+  sendChatMessage: async (content, targetBlockId) => {
+    const { script, chatMessages, activeBlockId } = get();
+    if (!script) return;
+    const targetId = targetBlockId !== undefined ? targetBlockId : activeBlockId;
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content,
+      targetBlockId: targetId,
+      timestamp: Date.now(),
+    };
+
+    const assistantMsgId = crypto.randomUUID();
+    const initialAssistantMsg: ChatMessage = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      targetBlockId: targetId,
+      timestamp: Date.now(),
+    };
+
+    const updatedMessages = [...chatMessages, userMsg, initialAssistantMsg];
+    set({
+      chatMessages: updatedMessages,
+      isChatStreaming: true,
+      isChatOpen: true,
+    });
+
+    const apiHistory = updatedMessages
+      .slice(0, -1)
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    try {
+      await api.streamScriptChat(
+        script.id,
+        apiHistory,
+        targetId,
+        (chunk) => {
+          set((state) => ({
+            chatMessages: state.chatMessages.map((m) =>
+              m.id === assistantMsgId
+                ? { ...m, content: m.content + chunk }
+                : m
+            ),
+          }));
+        }
+      );
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Error streaming response";
+      set((state) => ({
+        chatMessages: state.chatMessages.map((m) =>
+          m.id === assistantMsgId
+            ? { ...m, content: m.content || `⚠️ ${errorMsg}` }
+            : m
+        ),
+      }));
+    } finally {
+      set({ isChatStreaming: false });
+    }
+  },
+
 
   pushUndo: (entry) => set({ undoStack: [...get().undoStack.slice(-49), entry] }),
 

@@ -204,4 +204,46 @@ export const api = {
 
   exportUrl: (scriptId: number, format: "text" | "json") =>
     `${API_BASE}/scripts/${scriptId}/export/?fmt=${format}`,
+
+  streamScriptChat: async (
+    scriptId: number,
+    messages: Array<{ role: string; content: string }>,
+    targetBlockId: number | null,
+    onChunk: (text: string) => void
+  ): Promise<void> => {
+    const res = await fetch(`${API_BASE}/scripts/${scriptId}/chat/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Client-Id": clientId!,
+      },
+      body: JSON.stringify({ messages, target_block_id: targetBlockId }),
+    });
+    if (!res.ok) throw new Error(`Chat failed: ${res.status}`);
+    const reader = res.body?.getReader();
+    if (!reader) return;
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("data: ")) {
+          const dataStr = trimmed.slice(6);
+          if (dataStr === "[DONE]") return;
+          try {
+            const parsed = JSON.parse(dataStr) as { text?: string };
+            if (parsed.text) onChunk(parsed.text);
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+  },
 };
+

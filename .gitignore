@@ -7,3 +7,6 @@ dist/
 backend/media/
 *.log
 Copy of*.docx
+.env
+*.env
+
