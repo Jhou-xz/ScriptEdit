@@ -642,9 +642,6 @@ export function TimelinePanel() {
               const laneInfo = laneTops.tops.get(t.id)!;
               const layout = rowLayout.get(t.id) ?? new Map<number, RowAssignment>();
               const trackBlocks = blocksByTrack.get(t.id) ?? [];
-              const numRows = layout.size > 0 ? Math.max(1, ...[...layout.values()].map((r) => r.row + 1)) : 1;
-              const blockHeight = Math.max(14, Math.floor((laneInfo.height - (numRows + 1) * 4) / numRows));
-              const isCompact = blockHeight < 28;
               return (
                 <div
                   key={t.id}
@@ -655,23 +652,44 @@ export function TimelinePanel() {
                     const isDragging = drag?.blockId === b.id;
                     const start = isDragging ? drag.currentStart : b.start_seconds;
                     const duration = isDragging ? drag.currentDuration : b.duration_seconds;
-                    const ownTop = laneTops.tops.get(b.track)?.top ?? 0;
-                    const ownRow = layout.get(b.id)?.row ?? 0;
+                    const end = start + duration;
+
+                    const activeTrackId = isDragging ? drag.currentTrackId : b.track;
+                    const activeLaneInfo = laneTops.tops.get(activeTrackId) ?? laneInfo;
+                    const activeLayout = rowLayout.get(activeTrackId) ?? layout;
+                    const activeBlocks = blocksByTrack.get(activeTrackId) ?? [];
+
+                    const overlaps = activeBlocks.filter((other) => {
+                      if (other.id === b.id) return true;
+                      const oStart = (drag?.blockId === other.id) ? drag.currentStart : other.start_seconds;
+                      const oDuration = (drag?.blockId === other.id) ? drag.currentDuration : other.duration_seconds;
+                      const oEnd = oStart + oDuration;
+                      return oStart < end - 0.001 && oEnd > start + 0.001;
+                    });
+
+                    const clusterRows = new Set(overlaps.map((o) => activeLayout.get(o.id)?.row ?? 0));
+                    const maxClusterRow = clusterRows.size > 0 ? Math.max(...clusterRows) : 0;
+                    const numClusterRows = Math.max(1, maxClusterRow + 1);
+
+                    let curHeight: number;
                     let top: number;
-                    let curHeight = blockHeight;
-                    if (isDragging && drag.currentTrackId !== b.track) {
-                      const targetLaneInfo = laneTops.tops.get(drag.currentTrackId);
-                      const targetTop = targetLaneInfo?.top ?? ownTop;
-                      const targetHeight = targetLaneInfo?.height ?? laneInfo.height;
-                      const targetLayout = rowLayout.get(drag.currentTrackId);
-                      const targetRows = targetLayout && targetLayout.size > 0
-                        ? Math.max(1, ...[...targetLayout.values()].map((r) => r.row + 1))
-                        : 1;
-                      curHeight = Math.max(14, Math.floor((targetHeight - (targetRows + 1) * 4) / targetRows));
-                      top = targetTop - ownTop + 4;
+
+                    if (numClusterRows === 1) {
+                      curHeight = Math.max(16, activeLaneInfo.height - 8);
+                      top = 4;
                     } else {
-                      top = 4 + ownRow * (blockHeight + 4);
+                      const ownRow = activeLayout.get(b.id)?.row ?? 0;
+                      curHeight = Math.max(14, Math.floor((activeLaneInfo.height - (numClusterRows + 1) * 4) / numClusterRows));
+                      top = 4 + ownRow * (curHeight + 4);
                     }
+
+                    if (isDragging && drag.currentTrackId !== b.track) {
+                      const ownTop = laneTops.tops.get(b.track)?.top ?? 0;
+                      const targetTop = activeLaneInfo.top;
+                      top += targetTop - ownTop;
+                    }
+
+                    const isCompact = curHeight < 28;
                     const holder = presence[b.id];
                     const flash = agentFlash[b.id] && Date.now() - agentFlash[b.id] < 1200;
                     return (
@@ -691,6 +709,7 @@ export function TimelinePanel() {
                           height: `${curHeight}px`,
                           background: t.color,
                         }}
+
 
 
                         onPointerDown={(e) => onBlockPointerDown(e, b, "move")}
