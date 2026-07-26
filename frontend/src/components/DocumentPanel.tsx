@@ -613,27 +613,15 @@ function ClipCard({
           )}
         </span>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-          <button
-            className="doc-icon-btn"
-            style={{ background: "rgba(41, 151, 255, 0.15)", border: "1px solid rgba(41, 151, 255, 0.4)", color: "var(--color-accent)", padding: "2px 8px", fontSize: "11px", fontWeight: 600 }}
-            title="Ask AI Copilot for targeted suggestions on this clip"
-            onClick={(e) => {
-              e.stopPropagation();
-              useStore.getState().requestBlockSuggestion(block.id);
-            }}
-          >
-            ✨ AI Suggestion
-          </button>
-          <button
-            className="doc-icon-btn doc-icon-danger"
-            title="Delete"
-            onClick={() => deleteBlock(block.id)}
-          >
-            ×
-          </button>
-        </div>
+        <button
+          className="doc-icon-btn doc-icon-danger"
+          title="Delete"
+          onClick={() => deleteBlock(block.id)}
+        >
+          ×
+        </button>
       </header>
+
 
 
       {embedId && (

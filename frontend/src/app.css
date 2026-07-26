@@ -426,15 +426,81 @@
   outline: none;
 }
 
-.track-label-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
+.track-menu-wrap {
+  position: relative;
+  flex: none;
 }
 
-.track-label:hover .track-label-actions {
+.track-menu-trigger {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+}
+
+.track-label:hover .track-menu-trigger,
+.track-menu-trigger:hover {
   opacity: 1;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.track-menu-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #282828;
+  border: 1px solid var(--divider-hairline);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  min-width: 170px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.track-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.track-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.track-menu-item-active {
+  color: var(--color-accent);
+  background: rgba(41, 151, 255, 0.12);
+}
+
+.track-menu-item-danger:hover {
+  background: rgba(224, 108, 108, 0.15);
+  color: #f87171;
 }
 
 .track-icon-btn {
@@ -453,6 +519,7 @@
   background: var(--surface-hover);
   color: var(--text-primary);
 }
+
 
 .track-icon-active {
   color: var(--color-accent);

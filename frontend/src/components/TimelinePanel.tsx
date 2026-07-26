@@ -79,7 +79,15 @@ function TrackLabel({
     useStore();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(track.name);
+  const [menuOpen, setMenuOpen] = useState(false);
   const heightDragRef = useRef<{ startY: number; startH: number; last: number } | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [menuOpen]);
 
   const commitRename = () => {
     setEditing(false);
@@ -111,7 +119,6 @@ function TrackLabel({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   };
-
 
   return (
     <div
@@ -145,45 +152,57 @@ function TrackLabel({
           onDoubleClick={() => setEditing(true)}
         >
           {track.name}
+          {track.is_script_track && (
+            <span style={{ fontSize: "10px", color: "var(--color-accent)", marginLeft: "4px", fontWeight: 600 }}>[Script]</span>
+          )}
         </span>
       )}
-      <div className="track-label-actions">
+      <div className="track-menu-wrap" onClick={(e) => e.stopPropagation()}>
         <button
-          className={`track-icon-btn ${track.is_script_track ? "track-icon-active" : ""}`}
-          title={
-            track.is_script_track
-              ? "Script track: blocks auto-size from word count (click to disable)"
-              : "Make script track (blocks auto-size from word count)"
-          }
-          onClick={() => toggleScriptTrack(track.id)}
+          className="track-menu-trigger"
+          title="Track options"
+          onClick={() => setMenuOpen(!menuOpen)}
         >
-          Aa
+          ⋮
         </button>
-        <button
-          className="track-icon-btn"
-          title="Add block"
-          onClick={() => {
-            const existing = Object.values(blocks).filter((b) => b.track === track.id);
-            const end = Math.max(
-              0,
-              ...existing.map((b) => b.start_seconds + b.duration_seconds)
-            );
-            createBlock(track.id, Math.round(end + 2));
-          }}
-        >
-          +
-        </button>
-        <button
-          className="track-icon-btn track-icon-danger"
-          title="Delete track (and its blocks)"
-          onClick={() => {
-            if (window.confirm(`Delete track "${track.name}" and all its blocks?`)) {
-              deleteTrack(track.id);
-            }
-          }}
-        >
-          ×
-        </button>
+        {menuOpen && (
+          <div className="track-menu-popover">
+            <button
+              className={`track-menu-item ${track.is_script_track ? "track-menu-item-active" : ""}`}
+              onClick={() => {
+                toggleScriptTrack(track.id);
+                setMenuOpen(false);
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>Aa</span>
+              <span>{track.is_script_track ? "Disable Script Track" : "Make Script Track"}</span>
+            </button>
+            <button
+              className="track-menu-item"
+              onClick={() => {
+                const existing = Object.values(blocks).filter((b) => b.track === track.id);
+                const end = Math.max(0, ...existing.map((b) => b.start_seconds + b.duration_seconds));
+                createBlock(track.id, Math.round(end + 2));
+                setMenuOpen(false);
+              }}
+            >
+              <span>+</span>
+              <span>Add Block</span>
+            </button>
+            <button
+              className="track-menu-item track-menu-item-danger"
+              onClick={() => {
+                setMenuOpen(false);
+                if (window.confirm(`Delete track "${track.name}" and all its blocks?`)) {
+                  deleteTrack(track.id);
+                }
+              }}
+            >
+              <span>🗑️</span>
+              <span>Delete Track</span>
+            </button>
+          </div>
+        )}
       </div>
       <span
         className="track-height-grip"
@@ -197,6 +216,7 @@ function TrackLabel({
     </div>
   );
 }
+
 
 export function TimelinePanel() {
   const {
