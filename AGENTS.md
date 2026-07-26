@@ -34,6 +34,7 @@ backend/
     services/
       docx_import.py  .docx parser → tracks/blocks (shared by command + endpoint)
       ai_chat.py      LLM Script Editing Copilot SSE streaming (DEEPSEEK_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY)
+      ai_search.py    Live Web Search & Fact-Checking service (DuckDuckGo default, TAVILY_API_KEY optional)
       ai_layout.py    LLM auto-layout service
     management/commands/import_docx.py
 frontend/src/
@@ -43,7 +44,7 @@ frontend/src/
     TopNav.tsx        brand + script switcher (left), AI Assistant toggle + Import/Export (right)
     DocumentPanel.tsx document view: VoSection, ClipCard, YouTubeEmbed, BubbleMenu
     TimelinePanel.tsx custom timeline: lanes, sub-rows, drag/resize, wheel pan/zoom
-    AiChatPanel.tsx   AI Assistant sidebar: Astryx Chat UI, context banner, target badges, diff proposal cards
+    AiChatPanel.tsx   AI Assistant sidebar: Astryx Chat UI, context banner, target badges, research toggle, diff proposal cards
   theme/tokens.css    design tokens (dark Premiere-style)
   app.css             all component styles
 apple/DESIGN.md       Apple design-system reference (grammar only; UI is dark Premiere-style)
@@ -74,10 +75,11 @@ apple/DESIGN.md       Apple design-system reference (grammar only; UI is dark Pr
   - `GET /api/scripts/{id}/export/?fmt=docx|text|json` — NOTE: param is `fmt`, not `format` (`?format=` collides with DRF content negotiation and 404s on `text`). `docx` (default in UI) mirrors the faceless-doc format via `services/docx_export.py` (headings, prose, clip parens, quotes, bare URLs, embedded images).
   - `POST /api/scripts/import/` (multipart `file`=.docx) — creates a new script from a faceless-doc script.
   - `POST /api/scripts/{id}/auto_layout/` — LLM layout suggestions.
-  - `POST /api/scripts/{id}/chat/` — SSE streaming Script Editing Copilot endpoint (`text/event-stream`). Takes `{messages: [...], target_block_id: int|null}`. Uses `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` from `backend/.env`.
+  - `POST /api/scripts/{id}/chat/` — SSE streaming Script Editing Copilot endpoint (`text/event-stream`). Takes `{messages: [...], target_block_id: int|null, web_search: bool}`. Uses `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` from `backend/.env`.
   - `POST /api/media/` (multipart image) → `{url}` for editor images.
 
 - Every response is the updated object; every mutation broadcasts.
+
 
 ## WebSocket protocol
 
