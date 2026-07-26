@@ -722,11 +722,12 @@ export function DocumentPanel() {
   const [railDragging, setRailDragging] = useState(false);
   const [cardLayout, setCardLayout] = useState<"under" | "side">(() => {
     try {
-      return (localStorage.getItem("scriptedit_doc_card_layout") as "under" | "side") ?? "under";
+      return (localStorage.getItem("scriptedit_doc_card_layout") as "under" | "side") ?? "side";
     } catch {
-      return "under";
+      return "side";
     }
   });
+
 
   const toggleCardLayout = () => {
     const next = cardLayout === "under" ? "side" : "under";
