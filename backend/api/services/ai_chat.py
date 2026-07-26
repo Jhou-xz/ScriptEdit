@@ -51,6 +51,25 @@ def build_chat_context(script: Script, target_block_id: int | None = None) -> Li
     return context_blocks
 
 
+def safe_urlopen(url: str, data: bytes, headers: dict, method: str = "POST", timeout: int = 60):
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.URLError as e:
+        if isinstance(e.reason, OSError) and getattr(e.reason, "errno", None) == 61:
+            old_no_proxy = os.environ.get("no_proxy")
+            os.environ["no_proxy"] = "*"
+            try:
+                clean_req = urllib.request.Request(url, data=data, headers=headers, method=method)
+                return urllib.request.urlopen(clean_req, timeout=timeout)
+            finally:
+                if old_no_proxy is None:
+                    os.environ.pop("no_proxy", None)
+                else:
+                    os.environ["no_proxy"] = old_no_proxy
+        raise e
+
+
 def stream_chat_response(
     script: Script,
     messages: List[Dict[str, str]],
@@ -78,7 +97,6 @@ def stream_chat_response(
         mock_text = target_text[:120].replace('"', '\\"') if target_text else "Section content"
         mock_response = (
             "I'm ready to help you edit your script! (Note: Set `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` on the backend for live LLM completions).\n\n"
-
             f"Here is a suggested revision for block #{target_id}:\n\n"
             "```json:proposal\n"
             "{\n"
@@ -113,14 +131,8 @@ def stream_chat_response(
             "Authorization": f"Bearer {config['key']}",
             "Content-Type": "application/json",
         }
-        req = urllib.request.Request(
-            config["url"],
-            data=json.dumps(body).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
         try:
-            with urllib.request.urlopen(req, timeout=60) as res:
+            with safe_urlopen(config["url"], data=json.dumps(body).encode("utf-8"), headers=headers, timeout=60) as res:
                 for line in res:
                     line_str = line.decode("utf-8").strip()
                     if line_str.startswith("data: "):
@@ -152,14 +164,8 @@ def stream_chat_response(
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
         }
-        req = urllib.request.Request(
-            config["url"],
-            data=json.dumps(body).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
         try:
-            with urllib.request.urlopen(req, timeout=60) as res:
+            with safe_urlopen(config["url"], data=json.dumps(body).encode("utf-8"), headers=headers, timeout=60) as res:
                 for line in res:
                     line_str = line.decode("utf-8").strip()
                     if line_str.startswith("data: "):
@@ -176,3 +182,4 @@ def stream_chat_response(
         except Exception as e:
             yield f"data: {json.dumps({'text': f'API Error: {str(e)}'})}\n\n"
             yield "data: [DONE]\n\n"
+
