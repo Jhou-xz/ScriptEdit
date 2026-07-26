@@ -43,7 +43,7 @@ frontend/src/
   components/
     TopNav.tsx        brand + script switcher (left), AI Assistant toggle + Import/Export (right)
     DocumentPanel.tsx document view: VoSection, ClipCard, YouTubeEmbed, ClipPopupPreview, BubbleMenu
-    TimelinePanel.tsx custom timeline: lanes, sub-rows, drag/resize, wheel pan/zoom
+    TimelinePanel.tsx custom timeline: lanes, sub-rows, flexible row heights (24px min), column resizer, drag/resize, wheel pan/zoom
     AiChatPanel.tsx   AI Assistant sidebar: Astryx Chat UI, context banner, target badges, research toggle, diff proposal cards
   theme/tokens.css    design tokens (dark Premiere-style)
   app.css             all component styles

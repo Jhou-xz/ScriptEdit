@@ -347,7 +347,23 @@
   display: none;
 }
 
+.timeline-col-handle {
+  width: 5px;
+  background: var(--divider-dark);
+  cursor: col-resize;
+  position: relative;
+  z-index: 50;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.timeline-col-handle:hover,
+.timeline-col-handle.split-handle-active {
+  background: var(--color-accent);
+}
+
 .ruler-corner {
+
   border-bottom: 1px solid var(--divider-dark);
   flex: none;
 }

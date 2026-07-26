@@ -6,7 +6,6 @@ import { useStore } from "../store/useStore";
 const SUBROW_HEIGHT = 64;
 const LANE_PADDING = 8;
 const MAX_SUBROWS = 3;
-const LABEL_WIDTH = 200;
 const RULER_HEIGHT = 28;
 
 function fmtTick(seconds: number) {
@@ -95,7 +94,7 @@ function TrackLabel({
     const onMove = (ev: PointerEvent) => {
       const g = heightDragRef.current;
       if (!g) return;
-      const h = Math.min(320, Math.max(48, Math.round(g.startH + (ev.clientY - g.startY))));
+      const h = Math.min(320, Math.max(24, Math.round(g.startH + (ev.clientY - g.startY))));
       g.last = h;
       onLiveHeight?.(track.id, h);
     };
@@ -112,6 +111,7 @@ function TrackLabel({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   };
+
 
   return (
     <div
@@ -223,6 +223,35 @@ export function TimelinePanel() {
     setLiveHeights((prev) => ({ ...prev, [trackId]: height }));
   }, []);
 
+  const [labelWidth, setLabelWidth] = useState<number>(() => {
+    try {
+      return Number(localStorage.getItem("scriptedit_timeline_label_width") ?? 200);
+    } catch {
+      return 200;
+    }
+  });
+  const [labelDragging, setLabelDragging] = useState(false);
+
+  useEffect(() => {
+    if (!labelDragging) return;
+    const onMove = (e: PointerEvent) => {
+      const el = scrollRef.current?.closest(".timeline-panel") as HTMLElement;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const pos = e.clientX - rect.left;
+      const next = Math.min(480, Math.max(120, Math.round(pos)));
+      setLabelWidth(next);
+      localStorage.setItem("scriptedit_timeline_label_width", String(next));
+    };
+    const onUp = () => setLabelDragging(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [labelDragging]);
+
   const [drag, setDrag] = useState<DragState | null>(null);
   const [trackDrag, setTrackDrag] = useState<{
     id: number;
@@ -275,12 +304,13 @@ export function TimelinePanel() {
       const layout = rowLayout.get(t.id);
       const rows = layout && layout.size > 0 ? [...layout.values()][0].rows : 1;
       const custom = liveHeights[t.id] ?? trackHeights[t.id];
-      const h = Math.max(laneHeight(rows), custom ?? 0);
+      const h = custom != null ? Math.max(24, custom) : laneHeight(rows);
       tops.set(t.id, { top: acc, height: h });
       acc += h;
     }
     return { tops, total: acc };
   }, [orderedTracks, rowLayout, liveHeights, trackHeights]);
+
 
   const trackAtY = useCallback(
     (y: number): Track | null => {
@@ -500,7 +530,7 @@ export function TimelinePanel() {
       <div className="timeline-body">
         <div
           className="timeline-labels"
-          style={{ width: LABEL_WIDTH }}
+          style={{ width: labelWidth }}
           ref={labelsRef}
           onScroll={() => {
             if (labelsRef.current && scrollRef.current) {
@@ -557,6 +587,16 @@ export function TimelinePanel() {
             )}
           </div>
         </div>
+
+        <div
+          className={`timeline-col-handle ${labelDragging ? "split-handle-active" : ""}`}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            setLabelDragging(true);
+          }}
+          title="Drag to resize track column proportion"
+        />
+
         <div className="timeline-scroll" ref={scrollRef} onScroll={syncLabelScroll}>
           <div style={{ width: contentWidth, position: "relative" }}>
             <div className="ruler" style={{ height: RULER_HEIGHT }}>
@@ -581,6 +621,8 @@ export function TimelinePanel() {
             {orderedTracks.map((t) => {
               const laneInfo = laneTops.tops.get(t.id)!;
               const layout = rowLayout.get(t.id) ?? new Map<number, RowAssignment>();
+              const isCompact = laneInfo.height < 48;
+              const itemHeight = isCompact ? Math.max(16, laneInfo.height - 6) : undefined;
               return (
                 <div
                   key={t.id}
@@ -596,9 +638,9 @@ export function TimelinePanel() {
                     let top: number;
                     if (isDragging && drag.currentTrackId !== b.track) {
                       const targetTop = laneTops.tops.get(drag.currentTrackId)?.top ?? ownTop;
-                      top = targetTop - ownTop + LANE_PADDING;
+                      top = targetTop - ownTop + (isCompact ? 3 : LANE_PADDING);
                     } else {
-                      top = LANE_PADDING + ownRow * SUBROW_HEIGHT;
+                      top = isCompact ? 3 : LANE_PADDING + ownRow * SUBROW_HEIGHT;
                     }
                     const holder = presence[b.id];
                     const flash = agentFlash[b.id] && Date.now() - agentFlash[b.id] < 1200;
@@ -615,8 +657,10 @@ export function TimelinePanel() {
                           left: start * pxPerSecond,
                           width: Math.max(24, duration * pxPerSecond),
                           top,
+                          height: itemHeight ? `${itemHeight}px` : undefined,
                           background: t.color,
                         }}
+
                         onPointerDown={(e) => onBlockPointerDown(e, b, "move")}
                         onMouseEnter={() => setHoverBlock(b.id)}
                         onMouseLeave={() => setHoverBlock(null)}

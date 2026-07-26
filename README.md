@@ -9,7 +9,8 @@ Built **agent-first**: the backend is a headless state machine with a granular R
 ## Features
 
 - **Document view (top):** your whole script as a chronological, Word-like document — chapters, serif narration text, styled quotes, editor's notes, images, YouTube embeds cued to in/out points, and clickable link cards. Everything is editable in place. Clicking any section automatically syncs it as active context for AI chat.
-- **Timeline view (bottom):** multi-track lanes with saturated clips. Word-count-based auto-width pacing (150 wpm default), drag to move/resize, overlapping clips fan out into sub-rows, wheel to pan, Ctrl/Cmd+wheel to zoom, draggable track reordering.
+- **Timeline view (bottom):** multi-track lanes with saturated clips. Flexible row height resizing (down to 24px compact squeezing), draggable track column width resizer, word-count-based auto-width pacing (150 wpm default), drag to move/resize, overlapping clips fan out into sub-rows, wheel to pan, Ctrl/Cmd+wheel to zoom, draggable track reordering.
+
 - **AI Script Editing Copilot (right sidebar):** VS Code / Antigravity IDE style chat panel powered by real-time LLM streaming (DeepSeek API `DEEPSEEK_API_KEY`, OpenAI, or Anthropic). Features **Strict Target Block Focus** (when a section is selected, AI focuses 100% of feedback, rewrites, and proposal cards on that block), **1-Click AI Suggestion Shortcuts** (`✨ AI Suggestion` buttons on section headers), and **Live Web Search & Deep Research Mode** (DuckDuckGo default, or optional `TAVILY_API_KEY`) for real-time fact checking, date verification, and B-roll video search. Full-script awareness by default with interactive target section syncing from Document review or Timeline, timeline timestamps (`[0:00 - 0:45]`), visual section badges (`🤖 Included in AI Chat`), clickable source citations, and interactive **Diff Proposal Cards** (`BEFORE` vs `AFTER`) with instant **Apply Edit** capabilities.
 
 
