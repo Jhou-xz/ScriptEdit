@@ -266,20 +266,30 @@ export function AiChatPanel() {
         />
 
         {targetBlock ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "6px", fontSize: "12px", color: "var(--text-secondary)" }}>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: trackById.get(targetBlock.track)?.color ?? "#2997ff",
-              }}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: trackById.get(targetBlock.track)?.color ?? "#2997ff",
+                }}
+              />
+              <span style={{ fontWeight: 600 }}>{targetBlock.title || `Block #${targetBlock.id}`}</span>
+              <span>· ⏱️ {fmtTime(targetBlock.start_seconds)} – {fmtTime(targetBlock.start_seconds + targetBlock.duration_seconds)}</span>
+              <span>· {targetBlock.word_count} words</span>
+            </div>
+            <Button
+              label="✨ Quick Suggestion"
+              variant="primary"
+              size="sm"
+              onClick={() => useStore.getState().requestBlockSuggestion(targetBlock.id)}
             />
-            <span style={{ fontWeight: 600 }}>{targetBlock.title || `Block #${targetBlock.id}`}</span>
-            <span>· ⏱️ {fmtTime(targetBlock.start_seconds)} – {fmtTime(targetBlock.start_seconds + targetBlock.duration_seconds)}</span>
-            <span>· {targetBlock.word_count} words</span>
+
           </div>
         ) : (
+
           <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", fontStyle: "italic" }}>
             Full Script Mode: Asking questions with knowledge of all sections.
           </div>

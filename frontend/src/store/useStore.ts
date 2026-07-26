@@ -68,7 +68,9 @@ interface StoreState {
   toggleChat: () => void;
   setChatOpen: (open: boolean) => void;
   sendChatMessage: (content: string, targetBlockId?: number | null) => Promise<void>;
+  requestBlockSuggestion: (blockId: number) => Promise<void>;
   clearChatMessages: () => void;
+
 
   updateBlockContent: (id: number, content: Record<string, unknown>) => Promise<void>;
   updateBlock: (id: number, data: Partial<Block>) => Promise<void>;
@@ -248,7 +250,15 @@ export const useStore = create<StoreState>((set, get) => ({
   toggleWebSearch: () => set({ webSearchEnabled: !get().webSearchEnabled }),
   setChatOpen: (open) => set({ isChatOpen: open }),
   clearChatMessages: () => set({ chatMessages: [] }),
+  requestBlockSuggestion: async (blockId: number) => {
+    set({ activeBlockId: blockId, isChatOpen: true });
+    await get().sendChatMessage(
+      "Analyze this specific section and give me concrete suggestions and rewrites to improve hook impact, pacing, tone, and visual B-roll alignment.",
+      blockId
+    );
+  },
   sendChatMessage: async (content, targetBlockId) => {
+
     const { script, chatMessages, activeBlockId, webSearchEnabled } = get();
     if (!script) return;
     const targetId = targetBlockId !== undefined ? targetBlockId : activeBlockId;

@@ -10,11 +10,17 @@ from api.services.ai_layout import get_api_config
 SYSTEM_PROMPT = """You are a Script Editing Copilot for YouTube documentary creators.
 You have full awareness of the complete documentary script, including all voiceover sections, B-roll notes, resource clips, word counts, and sequence pacing.
 
-You can answer general macro-level questions about the script (e.g. overall flow, hook quality, tone, structural pacing, section summaries) OR help refine specific sections/blocks.
+CRITICAL FOCUS RULES:
+1. TARGETED BLOCK MODE (When a TARGET BLOCK is attached):
+   - The user is asking specifically about that TARGET BLOCK!
+   - You MUST focus 100% of your suggestions, critique, rewrites, pacing adjustments, and visual notes specifically on that TARGET BLOCK.
+   - Do NOT give generic macro script overviews unless explicitly asked.
+   - Always include a `json:proposal` block targeting that block with concrete `original_text` and `proposed_text` improvements.
 
-When the user asks for text revisions, re-timing, or visual notes for a block, provide your commentary AND include a structured proposal block in your response.
+2. FULL SCRIPT MODE (When NO target block is attached):
+   - Answer macro-level questions about the full script's flow, hook strength, tone, structure, or overall pacing.
 
-Structure your response in markdown text. If you suggest changes to a block, embed a JSON code block with language `json:proposal` like this:
+When suggesting text revisions, re-timing, or visual notes for a block, structure your response in markdown text AND embed a JSON code block with language `json:proposal` like this:
 
 ```json:proposal
 {
@@ -27,7 +33,6 @@ Structure your response in markdown text. If you suggest changes to a block, emb
 ```
 
 Keep your advice concise, sharp, and tailored for fast-paced, high-retention YouTube documentaries."""
-
 
 
 def build_chat_context(script: Script, target_block_id: int | None = None) -> List[Dict[str, Any]]:
@@ -91,11 +96,28 @@ def stream_chat_response(
         query = f"{script.title} {last_user_msg}"[:120]
         web_results = perform_web_search(query, max_results=4)
 
+    target_directive = ""
+    if target_block_id:
+        target_b = next((b for b in context_blocks if b["id"] == target_block_id), None)
+        if target_b:
+            target_directive = (
+                f"\n\n=======================================================\n"
+                f"🎯 EXPLICIT TARGET BLOCK ATTACHED (PRIMARY USER FOCUS):\n"
+                f"Block #{target_b['id']} ('{target_b['title'] or 'Section'}') on track '{target_b['track_name']}'\n"
+                f"Time Range: {target_b['start_seconds']}s - {target_b['start_seconds'] + target_b['duration_seconds']}s | Word Count: {target_b['word_count']}\n"
+                f"TARGET CONTENT:\n\"\"\"{target_b['text']}\"\"\"\n\n"
+                f"MANDATORY INSTRUCTION: The user's query ('{last_user_msg}') is directed SPECIFICALLY AT THIS TARGET BLOCK #{target_b['id']}. "
+                f"Do NOT give generic or macro-level script summaries. Focus 100% of your suggestions, rewrites, and critique on block #{target_b['id']} and return a `json:proposal` card targeting block #{target_b['id']}!\n"
+                f"=======================================================\n"
+            )
+
     system_message = (
-        f"{SYSTEM_PROMPT}\n\n"
-        f"CURRENT SCRIPT CONTEXT ({script.title}):\n"
+        f"{SYSTEM_PROMPT}\n"
+        f"{target_directive}\n"
+        f"FULL SCRIPT CONTEXT ({script.title}):\n"
         f"{json.dumps(context_blocks, indent=2)}"
     )
+
     if web_results:
         system_message += (
             f"\n\nLIVE WEB SEARCH & FACT-CHECKING RESULTS:\n"
