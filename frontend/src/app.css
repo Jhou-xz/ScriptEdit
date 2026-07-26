@@ -615,10 +615,8 @@
   background: #1c1c1c;
 }
 
-/* ---------- Blocks (Premiere-style saturated clips) ---------- */
 .block {
   position: absolute;
-  height: 56px;
   border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
@@ -630,6 +628,21 @@
   transition: outline-color 0.15s ease;
   z-index: 2;
 }
+
+.block-compact {
+  padding: 0 4px;
+}
+
+.block-compact .block-text {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.block-compact .anchor-notch {
+  width: 6px;
+  height: 6px;
+}
+
 
 .gridlines {
   position: absolute;

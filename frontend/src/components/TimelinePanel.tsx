@@ -641,26 +641,36 @@ export function TimelinePanel() {
             {orderedTracks.map((t) => {
               const laneInfo = laneTops.tops.get(t.id)!;
               const layout = rowLayout.get(t.id) ?? new Map<number, RowAssignment>();
-              const isCompact = laneInfo.height < 48;
-              const itemHeight = isCompact ? Math.max(16, laneInfo.height - 6) : undefined;
+              const trackBlocks = blocksByTrack.get(t.id) ?? [];
+              const numRows = layout.size > 0 ? Math.max(1, ...[...layout.values()].map((r) => r.row + 1)) : 1;
+              const blockHeight = Math.max(14, Math.floor((laneInfo.height - (numRows + 1) * 4) / numRows));
+              const isCompact = blockHeight < 28;
               return (
                 <div
                   key={t.id}
                   className="lane"
-                  style={{ height: laneInfo.height, top: 0 }}
+                  style={{ height: laneInfo.height }}
                 >
-                  {(blocksByTrack.get(t.id) ?? []).map((b) => {
+                  {trackBlocks.map((b) => {
                     const isDragging = drag?.blockId === b.id;
                     const start = isDragging ? drag.currentStart : b.start_seconds;
                     const duration = isDragging ? drag.currentDuration : b.duration_seconds;
                     const ownTop = laneTops.tops.get(b.track)?.top ?? 0;
                     const ownRow = layout.get(b.id)?.row ?? 0;
                     let top: number;
+                    let curHeight = blockHeight;
                     if (isDragging && drag.currentTrackId !== b.track) {
-                      const targetTop = laneTops.tops.get(drag.currentTrackId)?.top ?? ownTop;
-                      top = targetTop - ownTop + (isCompact ? 3 : LANE_PADDING);
+                      const targetLaneInfo = laneTops.tops.get(drag.currentTrackId);
+                      const targetTop = targetLaneInfo?.top ?? ownTop;
+                      const targetHeight = targetLaneInfo?.height ?? laneInfo.height;
+                      const targetLayout = rowLayout.get(drag.currentTrackId);
+                      const targetRows = targetLayout && targetLayout.size > 0
+                        ? Math.max(1, ...[...targetLayout.values()].map((r) => r.row + 1))
+                        : 1;
+                      curHeight = Math.max(14, Math.floor((targetHeight - (targetRows + 1) * 4) / targetRows));
+                      top = targetTop - ownTop + 4;
                     } else {
-                      top = isCompact ? 3 : LANE_PADDING + ownRow * SUBROW_HEIGHT;
+                      top = 4 + ownRow * (blockHeight + 4);
                     }
                     const holder = presence[b.id];
                     const flash = agentFlash[b.id] && Date.now() - agentFlash[b.id] < 1200;
@@ -672,14 +682,16 @@ export function TimelinePanel() {
                           activeBlockId === b.id ? "block-active" : "",
                           isDragging ? "block-dragging" : "",
                           flash ? "block-flash" : "",
+                          isCompact ? "block-compact" : "",
                         ].join(" ")}
                         style={{
                           left: start * pxPerSecond,
                           width: Math.max(24, duration * pxPerSecond),
                           top,
-                          height: itemHeight ? `${itemHeight}px` : undefined,
+                          height: `${curHeight}px`,
                           background: t.color,
                         }}
+
 
                         onPointerDown={(e) => onBlockPointerDown(e, b, "move")}
                         onMouseEnter={() => setHoverBlock(b.id)}
